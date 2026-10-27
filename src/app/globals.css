@@ -72,18 +72,11 @@ body {
 }
 
 /* Home page motion. */
-@keyframes draw-line {
-  0% { stroke-dashoffset: var(--len); opacity: 0; }
-  10% { opacity: 1; }
-  55% { stroke-dashoffset: 0; opacity: 1; }
-  85% { stroke-dashoffset: 0; opacity: 0; }
-  100% { stroke-dashoffset: var(--len); opacity: 0; }
-}
-@keyframes travel-dot {
-  0%, 8% { offset-distance: 0%; opacity: 0; }
-  12% { opacity: 1; }
-  55% { offset-distance: 100%; opacity: 1; }
-  85%, 100% { offset-distance: 100%; opacity: 0; }
+/* Six frames of 1.2s in a 7.2s loop: each fades in, holds, and hands over to the next. */
+@keyframes tendu-frame {
+  0% { opacity: 0; }
+  4%, 16.7% { opacity: 1; }
+  20.7%, 100% { opacity: 0; }
 }
 
 @keyframes hero-drift {
@@ -102,10 +95,10 @@ body {
 .hero-drift { animation: hero-drift 30s ease-in-out infinite; }
 .mist { animation: mist 18s ease-in-out infinite; }
 
-.line-draw { animation: draw-line 9s ease-in-out infinite; stroke-dasharray: var(--len); }
-.dot-travel { animation: travel-dot 9s ease-in-out infinite; }
+.tendu-frame { opacity: 0; animation: tendu-frame 7.2s linear infinite backwards; }
 
 @media (prefers-reduced-motion: reduce) {
-  .line-draw, .dot-travel, .glow-pulse, .hero-drift, .mist { animation: none; }
-  .line-draw { stroke-dashoffset: 0; }
+  .glow-pulse, .hero-drift, .mist, .tendu-frame { animation: none; }
+  /* Without motion, hold the tendu devant frame. */
+  .tendu-frame:nth-child(2) { opacity: 1; }
 }

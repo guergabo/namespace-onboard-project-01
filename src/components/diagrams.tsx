@@ -221,9 +221,11 @@ export function Figure({ pose, side, notes = [], size = "lg" }: { pose: Pose; si
           <circle cx={p[n.at].x} cy={p[n.at].y} r="9" fill={GLOW} opacity="0.25" className="glow-pulse" />
           <circle cx={p[n.at].x} cy={p[n.at].y} r="4.5" fill={GLOW} />
           {/* Numbers sit outside the joint, away from the body's centre line, so neighbours don't collide. */}
-          <text x={p[n.at].x + (p[n.at].x < p.pelvis.x ? -10 : 10)} y={p[n.at].y - 6} fontSize="9" fill={GLOW} textAnchor="middle" fontFamily="var(--font-sans)" fontWeight="600">
-            {i + 1}
-          </text>
+          {n.text && (
+            <text x={p[n.at].x + (p[n.at].x < p.pelvis.x ? -10 : 10)} y={p[n.at].y - 6} fontSize="9" fill={GLOW} textAnchor="middle" fontFamily="var(--font-sans)" fontWeight="600">
+              {i + 1}
+            </text>
+          )}
         </g>
       ))}
     </svg>

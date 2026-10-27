@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HeroBackdrop, TenduLine } from "@/components/hero-backdrop";
+import { HeroBackdrop, TenduLoop } from "@/components/hero-backdrop";
 import { getGlossaryStats } from "@/lib/glossary";
 
 export default async function Home() {
@@ -22,8 +22,13 @@ export default async function Home() {
         <div className="mt-8 flex flex-wrap items-end justify-between gap-6">
           <div className="glass w-full max-w-lg p-6">
             <p className="eyebrow text-cream/75">In the glossary</p>
-            <div className="mt-2">
-              <TenduLine />
+            <div className="mt-3 flex items-center gap-5">
+              <div className="w-28 shrink-0">
+                <TenduLoop />
+              </div>
+              <p className="font-serif text-lg italic leading-snug text-cream/85">
+                Battement tendu: devant, à la seconde, derrière.
+              </p>
             </div>
             <div className="mt-2 grid grid-cols-3 gap-4 border-t border-cream/20 pt-4">
               {[

@@ -1,5 +1,7 @@
 import Image from "next/image";
 import hero from "@/assets/hero.jpg";
+import type { Pose } from "@/lib/pose";
+import { Figure } from "./diagrams";
 
 /**
  * The home-page backdrop: a soft gouache painting of a dancer that drifts very slowly,
@@ -25,21 +27,28 @@ export function HeroBackdrop() {
   );
 }
 
-/** A fine line tracing a tendu: the foot brushes out along the floor to a glowing point and back. */
-export function TenduLine() {
-  const path = "M 20 92 C 80 96, 150 96, 210 88 C 240 84, 262 74, 280 58";
+const FIFTH: Pose = { facing: 2, legs: { W: "5th-front", S: "5th-back" }, arms: { W: "2nd", S: "2nd" } };
+const FIFTH_BACK: Pose = { ...FIFTH, legs: { W: "5th-back", S: "5th-front" } };
+const tendu = (W: Pose["legs"]["W"], S: Pose["legs"]["S"]): Pose => ({ ...FIFTH, legs: { W, S } });
+
+/** Battement tendu en croix: front, side, back, closing in 5th between each. One frame shows at a time. */
+const TENDU_FRAMES: { pose: Pose; out: boolean }[] = [
+  { pose: FIFTH, out: false },
+  { pose: tendu("tendu-front", "5th-back"), out: true },
+  { pose: FIFTH, out: false },
+  { pose: tendu("tendu-side", "5th-back"), out: true },
+  { pose: FIFTH_BACK, out: false },
+  { pose: tendu("tendu-back", "5th-front"), out: true },
+];
+
+export function TenduLoop() {
   return (
-    <svg viewBox="0 48 300 58" className="h-auto w-full" fill="none" aria-hidden>
-      <line x1="10" y1="98" x2="290" y2="98" stroke="#f3ead3" strokeOpacity="0.25" />
-      <path
-        d={path}
-        stroke="#fbf1d6"
-        strokeWidth="1.2"
-        className="line-draw"
-        style={{ ["--len" as string]: 300 }}
-      />
-      <circle r="4" fill="#fbf1d6" className="dot-travel" style={{ offsetPath: `path("${path}")` }} />
-      <circle r="11" fill="#fbf1d6" opacity="0.3" className="dot-travel" style={{ offsetPath: `path("${path}")` }} />
-    </svg>
+    <div className="relative mx-auto aspect-[230/265] w-full max-w-[150px]" aria-label="A dancer doing battement tendu to the front, side and back">
+      {TENDU_FRAMES.map((f, i) => (
+        <div key={i} className="tendu-frame absolute inset-0" style={{ animationDelay: `${i * 1.2}s` }}>
+          <Figure pose={f.pose} side="R" size="sm" notes={f.out ? [{ at: "WToe", text: "" }] : []} />
+        </div>
+      ))}
+    </div>
   );
 }
