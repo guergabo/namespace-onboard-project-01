@@ -3,25 +3,62 @@
 import { useSyncExternalStore } from "react";
 import type { DiagramData } from "@/db/schema";
 import type { Phase } from "@/lib/glossary";
-import { sideText, type Side } from "@/lib/pose";
+import { sideText, type Pose, type Side } from "@/lib/pose";
 import { Diagram, FigureNotes } from "./diagrams";
 import { PhaseStrip } from "./glossary-ui";
 
-/** The working-leg choice is shared by every step page and remembered in localStorage. */
+/**
+ * The working-leg choice is shared by every step page. It lives in memory and is remembered in
+ * localStorage when the browser allows it; some browsers block storage, so that is best effort.
+ */
 const KEY = "tendu:working-leg";
 const listeners = new Set<() => void>();
+let current: Side | null = null;
 function subscribe(listener: () => void) {
+  const onStorage = (e: StorageEvent) => {
+    if (e.key !== KEY) return;
+    current = e.newValue === "L" ? "L" : "R";
+    listener();
+  };
   listeners.add(listener);
-  window.addEventListener("storage", listener);
+  window.addEventListener("storage", onStorage);
   return () => {
     listeners.delete(listener);
-    window.removeEventListener("storage", listener);
+    window.removeEventListener("storage", onStorage);
   };
 }
-const getSide = (): Side => (localStorage.getItem(KEY) === "L" ? "L" : "R");
+function getSide(): Side {
+  if (current === null) {
+    try {
+      current = localStorage.getItem(KEY) === "L" ? "L" : "R";
+    } catch {
+      current = "R";
+    }
+  }
+  return current;
+}
 function setSide(side: Side) {
-  localStorage.setItem(KEY, side);
+  current = side;
+  try {
+    localStorage.setItem(KEY, side);
+  } catch {
+    // Storage blocked: the choice still applies until the page is reloaded.
+  }
   listeners.forEach((l) => l());
+}
+
+const SIDE_TOKEN = /\{([WSws]|p[1-8])\}/;
+const symmetric = (p: Pose) =>
+  p.legs.W === p.legs.S && p.arms.W === p.arms.S && (p.facing === 1 || p.facing === 5) && !p.twist && (p.head ?? "front") === "front";
+
+/** Whether choosing the left leg changes anything on the page; symmetric steps like 1st position don't. */
+function dependsOnSide(phases: Phase[], diagrams: BodyDiagram[], howTo: [string, string][]) {
+  const texts = [...phases.map((p) => p.caption), ...howTo.map(([, t]) => t), ...diagrams.flatMap((d) => [d.caption ?? "", ...(d.data.kind === "figure" ? (d.data.notes ?? []).map((n) => n.text) : [])])];
+  return (
+    texts.some((t) => SIDE_TOKEN.test(t)) ||
+    phases.some((p) => p.pose && !symmetric(p.pose)) ||
+    diagrams.some(({ data }) => data.kind === "room" || data.kind === "turn" || (data.kind === "feet" ? data.position >= 3 : !symmetric(data.pose)))
+  );
 }
 
 export type BodyDiagram = { data: DiagramData; title: string; caption: string | null };
@@ -48,7 +85,7 @@ export function StepBody({
 
   return (
     <div className="space-y-6">
-      {(phases.length > 0 || diagrams.length > 0) && (
+      {dependsOnSide(phases, diagrams, howTo) && (
         <div className="flex flex-wrap items-center gap-3">
           <span className="eyebrow text-cream/65">Working leg</span>
           <div role="radiogroup" aria-label="Working leg" className="flex rounded-full border border-cream/30 p-0.5">
