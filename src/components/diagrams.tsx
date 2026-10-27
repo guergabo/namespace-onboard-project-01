@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type { DiagramData } from "@/db/schema";
 import { gazeVector, mirrorPoint, sideOf, sideText, solvePose, VIEW_ELEVATION, type FigureNote, type Joint, type Pose, type Side } from "@/lib/pose";
 
@@ -8,6 +9,8 @@ import { gazeVector, mirrorPoint, sideOf, sideText, solvePose, VIEW_ELEVATION, t
  */
 const INK = "#f3ead3";
 const GLOW = "#fbf1d6";
+/** The working leg; matches --color-gold. */
+const GOLD = "#e6c27a";
 
 function AudienceLabel({ y }: { y: number }) {
   return (
@@ -113,9 +116,9 @@ export function StudioSquare({ facing, leg, side }: { facing: number; leg?: numb
       <line x1={fx * 8} y1={fy * 8} x2={fx * 42} y2={fy * 42} stroke={INK} strokeWidth="1.2" markerEnd={`url(#face-arrow-${side})`} />
       {legEnd && (
         <g>
-          <line x1="0" y1="0" x2={legEnd[0] * 58} y2={legEnd[1] * 58} stroke={GLOW} strokeWidth="2" strokeLinecap="round" />
-          <circle cx={legEnd[0] * 58} cy={legEnd[1] * 58} r="3" fill={GLOW} />
-          <text x={legEnd[0] * 58 + (legEnd[0] >= 0 ? 6 : -6)} y={legEnd[1] * 58 + (legEnd[1] > 0 ? 12 : -6)} fontSize="9" fill={GLOW} textAnchor={legEnd[0] >= 0 ? "start" : "end"} fontFamily="var(--font-sans)">
+          <line x1="0" y1="0" x2={legEnd[0] * 58} y2={legEnd[1] * 58} stroke={GOLD} strokeWidth="2" strokeLinecap="round" />
+          <circle cx={legEnd[0] * 58} cy={legEnd[1] * 58} r="3" fill={GOLD} />
+          <text x={legEnd[0] * 58 + (legEnd[0] >= 0 ? 6 : -6)} y={legEnd[1] * 58 + (legEnd[1] > 0 ? 12 : -6)} fontSize="9" fill={GOLD} textAnchor={legEnd[0] >= 0 ? "start" : "end"} fontFamily="var(--font-sans)">
             {w} leg
           </text>
         </g>
@@ -154,8 +157,8 @@ export function TurnDiagram({ direction, side }: { direction: "en dehors" | "en 
       <text x={-wx} y="-12" fontSize="8" fill={INK} textAnchor="middle" fontFamily="var(--font-sans)">
         standing {s}
       </text>
-      <circle cx={wx} cy="0" r="5" fill="none" stroke={INK} strokeDasharray="2 2" />
-      <text x={wx} y="17" fontSize="8" fill={INK} textAnchor="middle" fontFamily="var(--font-sans)">
+      <circle cx={wx} cy="0" r="5" fill="none" stroke={GOLD} strokeDasharray="2 2" />
+      <text x={wx} y="17" fontSize="8" fill={GOLD} textAnchor="middle" fontFamily="var(--font-sans)">
         working {w}
       </text>
       <text x="0" y="78" fontSize="9" fill={INK} fillOpacity="0.8" textAnchor="middle" fontFamily="var(--font-sans)">
@@ -181,10 +184,18 @@ export function Figure({ pose, side, notes = [], size = "lg" }: { pose: Pose; si
   const solved = solvePose(pose, side);
   const p = solved.screen;
   const lg = size === "lg";
-  const segs = SEGMENTS.map(([a, b]) => ({ a: p[a], b: p[b], depth: (p[a].depth + p[b].depth) / 2 })).sort((x, y) => x.depth - y.depth);
+  const id = useId().replace(/[^\w-]/g, "");
+  const segs = SEGMENTS.map(([a, b]) => ({
+    ends: [a, b],
+    a: p[a],
+    b: p[b],
+    depth: (p[a].depth + p[b].depth) / 2,
+    working: a === "WHip" || a === "WKnee" || a === "WAnkle",
+  })).sort((x, y) => x.depth - y.depth);
   const minDepth = Math.min(...segs.map((s) => s.depth));
   const maxDepth = Math.max(...segs.map((s) => s.depth));
-  const shade = (d: number) => (maxDepth - minDepth < 1 ? 1 : 0.5 + (0.5 * (d - minDepth)) / (maxDepth - minDepth));
+  // 0 for the limb furthest from the audience, 1 for the nearest.
+  const near = (d: number) => (maxDepth - minDepth < 1 ? 1 : (d - minDepth) / (maxDepth - minDepth));
   const g = gazeVector(pose, solved);
   const gaze = g && { x: Math.round(g.x * 1000) / 1000, y: Math.round(g.y * 1000) / 1000 };
   const torso = [p.WShoulder, p.SShoulder, p.SHip, p.WHip];
@@ -193,9 +204,36 @@ export function Figure({ pose, side, notes = [], size = "lg" }: { pose: Pose; si
     <svg viewBox="-115 -235 230 265" className="h-auto w-full" role="img" aria-label="Line drawing of the pose, seen from the audience">
       <ellipse cx="0" cy="0" rx="78" ry={78 * Math.sin(VIEW_ELEVATION)} fill={INK} fillOpacity="0.05" stroke={INK} strokeOpacity="0.25" />
       <polygon points={torso.map((j) => `${j.x},${j.y}`).join(" ")} fill={INK} fillOpacity="0.08" stroke={INK} strokeWidth={sw * 0.8} strokeLinejoin="round" />
-      {segs.map((s, i) => (
-        <line key={i} x1={s.a.x} y1={s.a.y} x2={s.b.x} y2={s.b.y} stroke={INK} strokeOpacity={shade(s.depth)} strokeWidth={sw} strokeLinecap="round" />
-      ))}
+      {segs.map((s, i) => {
+        const width = (seg: typeof s) => sw * (0.7 + 0.6 * near(seg.depth));
+        // Where a nearer limb crosses this one, cut a gap in this one so the nearer limb reads as in front.
+        // Limbs that share a joint are skipped, or every joint would get a notch.
+        const cutters = segs.slice(i + 1).filter((c) => !c.ends.some((e) => s.ends.includes(e)));
+        return (
+          <g key={i}>
+            {cutters.length > 0 && (
+              <mask id={`${id}-cut-${i}`} maskUnits="userSpaceOnUse" x="-115" y="-235" width="230" height="265">
+                <rect x="-115" y="-235" width="230" height="265" fill="white" />
+                {cutters.map((c, j) => (
+                  <line key={j} x1={c.a.x} y1={c.a.y} x2={c.b.x} y2={c.b.y} stroke="black" strokeWidth={width(c) + sw * 2.4} strokeLinecap="round" />
+                ))}
+              </mask>
+            )}
+            <line
+              x1={s.a.x}
+              y1={s.a.y}
+              x2={s.b.x}
+              y2={s.b.y}
+              stroke={s.working ? GOLD : INK}
+              // The working leg stays clearly gold even when it is the far leg.
+              strokeOpacity={(s.working ? 0.75 : 0.45) + (s.working ? 0.25 : 0.55) * near(s.depth)}
+              strokeWidth={width(s)}
+              strokeLinecap="round"
+              mask={cutters.length > 0 ? `url(#${id}-cut-${i})` : undefined}
+            />
+          </g>
+        );
+      })}
       <line x1={p.neck.x} y1={p.neck.y} x2={p.head.x} y2={p.head.y + 8} stroke={INK} strokeWidth={sw} />
       <circle cx={p.head.x} cy={p.head.y} r="8.5" fill="#5a5733" fillOpacity="0.6" stroke={INK} strokeWidth={sw} />
       {gaze && (
@@ -212,8 +250,8 @@ export function Figure({ pose, side, notes = [], size = "lg" }: { pose: Pose; si
       )}
       {lg && (
         <>
-          <SideTag at={p.WToe} label={sideOf("W", side)} />
-          <SideTag at={p.SToe} label={sideOf("S", side)} />
+          <SideTag at={p.WToe} label={sideOf("W", side)} color={GOLD} />
+          <SideTag at={p.SToe} label={sideOf("S", side)} color={INK} />
         </>
       )}
       {notes.map((n, i) => (
@@ -232,9 +270,9 @@ export function Figure({ pose, side, notes = [], size = "lg" }: { pose: Pose; si
   );
 }
 
-function SideTag({ at, label }: { at: { x: number; y: number }; label: string }) {
+function SideTag({ at, label, color }: { at: { x: number; y: number }; label: string; color: string }) {
   return (
-    <text x={at.x} y={Math.min(at.y + 14, 18)} fontSize="9" fill={INK} fillOpacity="0.8" textAnchor="middle" fontFamily="var(--font-sans)">
+    <text x={at.x} y={Math.min(at.y + 14, 18)} fontSize="9" fill={color} fillOpacity="0.9" textAnchor="middle" fontFamily="var(--font-sans)">
       {label}
     </text>
   );
@@ -248,11 +286,20 @@ export function FigureNotes({ notes, side }: { notes: FigureNote[]; side: Side }
           <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-glow font-sans text-[11px] font-semibold text-sage-900 shadow-[0_0_10px_3px_rgb(251_241_214/0.45)]">
             {i + 1}
           </span>
-          <span>{sideText(n.text, side)}</span>
+          <span>
+            <SideText text={n.text} side={side} />
+          </span>
         </li>
       ))}
     </ol>
   );
+}
+
+/** Text with side tokens (see sideText); the parts naming the working leg are shown in its gold. */
+export function SideText({ text, side }: { text: string; side: Side }) {
+  return text
+    .split(/(\{[Ww]\} (?:leg|foot|knee|toe|heel|sole))/)
+    .map((part, i) => (i % 2 ? <span key={i} className="text-gold">{sideText(part, side)}</span> : sideText(part, side)));
 }
 
 export function Diagram({ data, side }: { data: DiagramData; side: Side }) {

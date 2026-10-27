@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { CategoryNode, Phase, StepCard as StepCardData } from "@/lib/glossary";
-import { sideText, type Side } from "@/lib/pose";
-import { Diagram, Figure } from "./diagrams";
+import type { Side } from "@/lib/pose";
+import { Diagram, Figure, SideText } from "./diagrams";
 
 export function CategoryTree({ nodes, depth = 0 }: { nodes: CategoryNode[]; depth?: number }) {
   return (
@@ -73,7 +73,7 @@ export function PhaseStrip({ phases, side = "R", size = "sm" }: { phases: Phase[
           {lg && (
             <p className="mt-2 text-[15px] leading-snug text-cream/85">
               <span className="eyebrow mr-1.5 text-cream/55">{i + 1}</span>
-              {sideText(phase.caption, side)}
+              <SideText text={phase.caption} side={side} />
             </p>
           )}
         </li>

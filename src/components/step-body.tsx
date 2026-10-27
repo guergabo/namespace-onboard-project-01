@@ -3,8 +3,8 @@
 import { useSyncExternalStore } from "react";
 import type { DiagramData } from "@/db/schema";
 import type { Phase } from "@/lib/glossary";
-import { sideText, type Pose, type Side } from "@/lib/pose";
-import { Diagram, FigureNotes } from "./diagrams";
+import type { Pose, Side } from "@/lib/pose";
+import { Diagram, FigureNotes, SideText } from "./diagrams";
 import { PhaseStrip } from "./glossary-ui";
 
 /**
@@ -123,7 +123,7 @@ export function StepBody({
               <figure key={i} className="max-w-[300px] border-t border-cream/15 pt-4">
                 <figcaption className="eyebrow mb-2 text-cream/60">{d.title}</figcaption>
                 <Diagram data={d.data} side={side} />
-                {d.caption && <p className="mt-2 text-sm text-cream/70">{sideText(d.caption, side)}</p>}
+                {d.caption && <p className="mt-2 text-sm text-cream/70"><SideText text={d.caption} side={side} /></p>}
               </figure>
             ))}
           </div>
@@ -143,7 +143,7 @@ export function StepBody({
             <figure key={i} className="glass p-4">
               <figcaption className="eyebrow mb-2 text-cream/60">{d.title}</figcaption>
               <Diagram data={d.data} side={side} />
-              {d.caption && <p className="mt-2 text-sm text-cream/70">{sideText(d.caption, side)}</p>}
+              {d.caption && <p className="mt-2 text-sm text-cream/70"><SideText text={d.caption} side={side} /></p>}
             </figure>
           ))}
         </section>
@@ -156,7 +156,7 @@ export function StepBody({
             {howTo.map(([label, text]) => (
               <div key={label} className="grid gap-1 py-3 sm:grid-cols-[160px_1fr] sm:gap-6">
                 <dt className="font-medium text-cream/90">{label}</dt>
-                <dd className="leading-relaxed text-cream/80">{sideText(text, side)}</dd>
+                <dd className="leading-relaxed text-cream/80"><SideText text={text} side={side} /></dd>
               </div>
             ))}
           </dl>

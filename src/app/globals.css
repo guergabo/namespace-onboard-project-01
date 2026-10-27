@@ -14,6 +14,8 @@
   --color-sage-800: #444229;
   --color-sage-900: #2f2d1b;
   --color-glow: #fbf1d6;
+  /* The working leg, in diagrams and in the text that names it. */
+  --color-gold: #e6c27a;
 }
 
 :root {
