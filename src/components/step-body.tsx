@@ -72,20 +72,24 @@ export function StepBody({
   phases,
   diagrams,
   howTo,
+  sided,
 }: {
   kind: "pose" | "movement";
   phases: Phase[];
   diagrams: BodyDiagram[];
   howTo: [string, string][];
+  /** False for steps about the arms only: the legs are incidental, so there is no toggle and the right side is drawn. */
+  sided: boolean;
 }) {
-  const side = useSyncExternalStore(subscribe, getSide, () => "R" as const);
+  const chosen = useSyncExternalStore(subscribe, getSide, () => "R" as const);
+  const side = sided ? chosen : "R";
   const figure = kind === "pose" ? diagrams.find((d) => d.data.kind === "figure") : undefined;
   const others = diagrams.filter((d) => d !== figure);
   const notes = figure?.data.kind === "figure" ? (figure.data.notes ?? []) : [];
 
   return (
     <div className="space-y-6">
-      {dependsOnSide(phases, diagrams, howTo) && (
+      {sided && dependsOnSide(phases, diagrams, howTo) && (
         <div className="flex flex-wrap items-center gap-3">
           <span className="eyebrow text-cream/65">Working leg</span>
           <div role="radiogroup" aria-label="Working leg" className="flex rounded-full border border-cream/30 p-0.5">

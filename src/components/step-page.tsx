@@ -102,7 +102,7 @@ export async function StepPage({ slug, variantSlug }: { slug: string; variantSlu
 
       {variant?.summary && <p className="max-w-2xl text-lg text-cream/85">{variant.summary}</p>}
 
-      <StepBody kind={step.kind} phases={phases} diagrams={diagrams} howTo={rows} />
+      <StepBody kind={step.kind} phases={phases} diagrams={diagrams} howTo={rows} sided={!path.some((c) => c.slug === "arms")} />
 
       {termList.length > 0 && (
         <section className="flex flex-wrap items-center gap-2">
