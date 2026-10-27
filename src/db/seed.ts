@@ -13,7 +13,7 @@ import {
   terms,
   variants,
 } from "./schema";
-import { seedCategories, seedRelationships, seedSteps, seedTerms } from "./seed-data";
+import { seedCategories, seedRelationships, seedSteps, seedTerms, type SeedExtras } from "./seed-data";
 
 type Item = { stepId: number; variantId: null } | { stepId: null; variantId: number };
 
@@ -40,16 +40,17 @@ db.transaction((tx) => {
   }
 
   const items = new Map<string, Item>();
-  const addExtras = (item: Item, extra: { terms?: string[]; phases?: string[]; diagrams?: object[] }) => {
+  const addExtras = (item: Item, extra: SeedExtras) => {
     for (const slug of extra.terms ?? []) {
       const termId = termIds.get(slug);
       if (!termId) throw new Error(`Unknown term ${slug}`);
       tx.insert(itemTerms).values({ termId, ...item }).run();
     }
-    extra.phases?.forEach((caption, i) => tx.insert(phases).values({ ...item, sortOrder: i, caption }).run());
-    for (const data of extra.diagrams ?? []) {
-      tx.insert(diagrams).values({ ...item, data: data as never }).run();
-    }
+    extra.phases?.forEach((p, i) => {
+      const [caption, pose] = typeof p === "string" ? [p, null] : [p.caption, p.pose];
+      tx.insert(phases).values({ ...item, sortOrder: i, caption, pose }).run();
+    });
+    extra.diagrams?.forEach((data, i) => tx.insert(diagrams).values({ ...item, data, sortOrder: i }).run());
   };
 
   seedSteps.forEach((s, i) => {
@@ -64,6 +65,7 @@ db.transaction((tx) => {
         translation: s.translation,
         summary: s.summary,
         categoryId,
+        kind: s.kind ?? "movement",
         level: s.level,
         goals: s.goals,
         jumpSize: s.jumpSize,

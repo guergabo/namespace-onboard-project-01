@@ -7,6 +7,7 @@ import {
   text,
   type AnySQLiteColumn,
 } from "drizzle-orm/sqlite-core";
+import type { FigureNote, Pose } from "../lib/pose";
 
 export const LEVELS = ["beginner", "intermediate", "advanced"] as const;
 export type Level = (typeof LEVELS)[number];
@@ -47,11 +48,18 @@ export type HowTo = {
   mistakes?: string;
 };
 
-/** Data the step page draws diagrams from. */
+/**
+ * Data the step page draws diagrams from. Everything assumes the RIGHT leg is working;
+ * the page mirrors it for a left working leg.
+ */
 export type DiagramData =
   | { kind: "feet"; position: 1 | 2 | 3 | 4 | 5 }
-  | { kind: "room"; facing: number; leg?: number; label?: string }
-  | { kind: "turn"; direction: "en dehors" | "en dedans" };
+  | { kind: "room"; facing: number; leg?: number }
+  | { kind: "turn"; direction: "en dehors" | "en dedans" }
+  | { kind: "figure"; pose: Pose; notes?: FigureNote[] };
+
+/** A pose is held (positions, arabesques); a movement goes through phases. */
+export const STEP_KINDS = ["pose", "movement"] as const;
 
 export const categories = sqliteTable("categories", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -74,6 +82,7 @@ export const steps = sqliteTable(
     categoryId: integer("category_id")
       .notNull()
       .references(() => categories.id),
+    kind: text("kind", { enum: STEP_KINDS }).notNull().default("movement"),
     level: text("level", { enum: LEVELS }).notNull(),
     goals: text("goals", { mode: "json" }).$type<Goal[]>().notNull().default(sql`'[]'`),
     jumpSize: text("jump_size", { enum: ["petit", "medium", "grand"] }),
@@ -154,6 +163,8 @@ export const phases = sqliteTable(
     caption: text("caption").notNull(),
     count: text("count"),
     imageUrl: text("image_url"),
+    /** The line figure for this phase, as for a right working leg. */
+    pose: text("pose", { mode: "json" }).$type<Pose>(),
   },
   (t) => [check("phases_one_item", sql`(${t.stepId} IS NULL) != (${t.variantId} IS NULL)`)],
 );
@@ -166,6 +177,7 @@ export const diagrams = sqliteTable(
     variantId: integer("variant_id").references(() => variants.id, { onDelete: "cascade" }),
     data: text("data", { mode: "json" }).$type<DiagramData>().notNull(),
     caption: text("caption"),
+    sortOrder: integer("sort_order").notNull().default(0),
   },
   (t) => [check("diagrams_one_item", sql`(${t.stepId} IS NULL) != (${t.variantId} IS NULL)`)],
 );

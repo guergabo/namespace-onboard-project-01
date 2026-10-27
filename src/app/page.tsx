@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HeroBackdrop } from "@/components/hero-backdrop";
+import { HeroBackdrop, TenduLine } from "@/components/hero-backdrop";
 import { getGlossaryStats } from "@/lib/glossary";
 
 export default async function Home() {
@@ -10,44 +10,47 @@ export default async function Home() {
       <HeroBackdrop />
 
       <section className="relative mx-auto flex min-h-[calc(100svh-88px)] max-w-7xl flex-col justify-between px-6 pb-10 md:px-10">
-        <div className="pt-[8vh]">
-          <h1 className="font-serif text-[clamp(6rem,19vw,17rem)] leading-[0.85] tracking-[-0.03em] text-cream">
+        <div className="pt-[3vh]">
+          <h1 className="font-serif text-[clamp(6rem,18vw,15rem)] font-medium italic leading-[0.9] tracking-[-0.02em] text-cream">
             tendu
           </h1>
-          <p className="mt-6 max-w-md font-serif text-xl text-cream/90 md:text-2xl">
+          <p className="mt-4 max-w-lg font-serif text-xl text-cream/90 md:text-2xl">
             A Vaganova glossary of ballet steps, organised by how they move and how they connect.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/glossary"
-              className="rounded-full bg-cream px-6 py-3 font-serif text-lg text-sage-900 transition hover:bg-glow"
-            >
-              Explore the glossary →
-            </Link>
-          </div>
         </div>
 
-        <div className="glass mt-16 w-full max-w-md p-6">
-          <p className="text-xs uppercase tracking-[0.2em] text-cream/70">In the glossary</p>
-          <div className="mt-4 grid grid-cols-3 gap-4 border-b border-cream/15 pb-5">
-            {[
-              ["Steps", stats.steps],
-              ["Variants", stats.variants],
-              ["Terms", stats.terms],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <p className="font-serif text-4xl">{value}</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.15em] text-cream/65">{label}</p>
-              </div>
-            ))}
+        <div className="mt-8 flex flex-wrap items-end justify-between gap-6">
+          <div className="glass w-full max-w-lg p-6">
+            <p className="eyebrow text-cream/75">In the glossary</p>
+            <div className="mt-2">
+              <TenduLine />
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-4 border-t border-cream/20 pt-4">
+              {[
+                ["Steps", stats.steps],
+                ["Variants", stats.variants],
+                ["Terms", stats.terms],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <p className="eyebrow text-cream/65">{label}</p>
+                  <p className="mt-1 font-serif text-3xl">{value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {stats.sections.map((s) => (
+                <Link key={s.slug} href={`/glossary/category/${s.slug}`} className="pill transition hover:bg-cream/10">
+                  {s.name}
+                </Link>
+              ))}
+            </div>
           </div>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {stats.sections.map((s) => (
-              <Link key={s.slug} href={`/glossary/category/${s.slug}`} className="pill transition hover:bg-cream/10">
-                {s.name}
-              </Link>
-            ))}
-          </div>
+          <Link
+            href="/glossary"
+            className="rounded-full bg-cream px-8 py-4 font-serif text-xl text-sage-900 shadow-[0_10px_40px_rgb(47_45_27/0.35)] transition hover:bg-glow"
+          >
+            Explore the glossary →
+          </Link>
         </div>
       </section>
     </main>

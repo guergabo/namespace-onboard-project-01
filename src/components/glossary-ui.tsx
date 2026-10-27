@@ -1,5 +1,7 @@
 import Link from "next/link";
-import type { CategoryNode, StepCard as StepCardData } from "@/lib/glossary";
+import type { CategoryNode, Phase, StepCard as StepCardData } from "@/lib/glossary";
+import { sideText, type Side } from "@/lib/pose";
+import { Diagram, Figure } from "./diagrams";
 
 export function CategoryTree({ nodes, depth = 0 }: { nodes: CategoryNode[]; depth?: number }) {
   return (
@@ -46,28 +48,34 @@ export function LevelPill({ level }: { level: string }) {
   return <span className={`pill border-transparent capitalize ${LEVEL_STYLES[level] ?? ""}`}>{level}</span>;
 }
 
-/** Key positions of a movement on a floor line, in order. Stands in for phase drawings. */
-export function PhaseStrip({ phases, size = "sm" }: { phases: string[]; size?: "sm" | "lg" }) {
+/**
+ * The key positions a movement passes through, in order: a small line figure for each phase
+ * on a shared floor line, with its caption. Cards show the figures only.
+ */
+export function PhaseStrip({ phases, side = "R", size = "sm" }: { phases: Phase[]; side?: Side; size?: "sm" | "lg" }) {
   if (phases.length === 0) return null;
-  // The large strip runs vertically on phones and horizontally from the sm breakpoint.
   const lg = size === "lg";
   return (
+    // Large strips fall back to two columns on phones so the figures stay readable.
     <ol
-      className={`relative gap-3 ${lg ? "flex flex-col sm:grid" : "grid"}`}
-      style={{ gridTemplateColumns: `repeat(${phases.length}, minmax(0, 1fr))` }}
+      className={`relative grid gap-2 ${lg ? "grid-cols-2 gap-y-6 sm:[grid-template-columns:var(--cols)]" : "[grid-template-columns:var(--cols)]"}`}
+      style={{ ["--cols" as string]: `repeat(${phases.length}, minmax(0, 1fr))` }}
     >
-      <span aria-hidden className={`absolute left-2 right-2 top-[7px] h-px bg-cream/25 ${lg ? "hidden sm:block" : ""}`} />
-      {phases.map((caption, i) => (
-        <li key={i} className={`relative ${lg ? "flex items-start gap-3 sm:block" : ""}`}>
-          <span
-            className={`relative block h-[15px] w-[15px] shrink-0 rounded-full bg-glow ${
-              lg ? "glow-dot" : "shadow-[0_0_12px_4px_rgb(255_246_223/0.45)]"
-            }`}
-          />
-          <p className={`leading-snug text-cream/80 ${lg ? "text-sm sm:mt-3" : "mt-3 text-[11px]"}`}>
-            <span className="mr-1 text-cream/50">{i + 1}</span>
-            {caption}
-          </p>
+      {phases.map((phase, i) => (
+        <li key={i} className="relative flex flex-col">
+          {phase.pose ? (
+            <div className={lg ? "px-1" : ""}>
+              <Figure pose={phase.pose} side={side} size={lg ? "lg" : "sm"} />
+            </div>
+          ) : (
+            <span className="mx-auto mt-6 block h-[13px] w-[13px] rounded-full bg-glow shadow-[0_0_12px_4px_rgb(251_241_214/0.45)]" />
+          )}
+          {lg && (
+            <p className="mt-2 text-[15px] leading-snug text-cream/85">
+              <span className="eyebrow mr-1.5 text-cream/55">{i + 1}</span>
+              {sideText(phase.caption, side)}
+            </p>
+          )}
         </li>
       ))}
     </ol>
@@ -75,23 +83,28 @@ export function PhaseStrip({ phases, size = "sm" }: { phases: string[]; size?: "
 }
 
 export function StepCard({ step }: { step: StepCardData }) {
+  const figures = step.phases.some((p) => p.pose);
   return (
     <Link href={`/glossary/${step.slug}`} className="glass group flex flex-col p-5 transition hover:bg-cream/12">
-      <div className="min-h-[92px]">
-        {step.phases.length > 0 ? (
+      <div className="flex min-h-[120px] items-end">
+        {figures ? (
           <PhaseStrip phases={step.phases} />
+        ) : step.diagram ? (
+          <div className="mx-auto w-full max-w-[170px]">
+            {step.diagram.kind === "figure" ? <Figure pose={step.diagram.pose} side="R" size="sm" /> : <Diagram data={step.diagram} side="R" />}
+          </div>
         ) : (
-          <p className="text-sm leading-relaxed text-cream/75">{step.summary}</p>
+          <p className="text-[15px] leading-relaxed text-cream/75">{step.summary}</p>
         )}
       </div>
-      <div className="mt-5 border-t border-cream/15 pt-4">
+      <div className="mt-4 border-t border-cream/15 pt-4">
         <h3 className="font-serif text-2xl leading-tight transition group-hover:text-glow">{step.name}</h3>
-        {step.pronunciation && <p className="mt-1 text-sm text-cream/60">({step.pronunciation})</p>}
+        {step.pronunciation && <p className="mt-1 text-[15px] italic text-cream/65">({step.pronunciation})</p>}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <LevelPill level={step.level} />
           {step.jumpSize && <span className="pill border-cream/20 text-cream/75">{step.jumpSize} allegro</span>}
           {step.variantCount > 0 && (
-            <span className="text-xs text-cream/55">
+            <span className="text-sm text-cream/60">
               {step.variantCount} {step.variantCount === 1 ? "variant" : "variants"}
             </span>
           )}

@@ -10,8 +10,10 @@ import {
   steps,
   terms,
   variants,
+  type DiagramData,
   type RelationshipType,
 } from "@/db/schema";
+import type { Pose } from "./pose";
 
 /**
  * Read-only glossary queries. The glossary only changes when the seed is reloaded,
@@ -67,16 +69,21 @@ function descendantIds(n: CategoryNode): number[] {
   return [n.id, ...n.children.flatMap(descendantIds)];
 }
 
+export type Phase = { caption: string; pose: Pose | null };
+
 export type StepCard = {
   slug: string;
   name: string;
   pronunciation: string | null;
   summary: string;
+  kind: "pose" | "movement";
   level: string;
   jumpSize: string | null;
   categoryId: number;
   variantCount: number;
-  phases: string[];
+  phases: Phase[];
+  /** The first diagram, shown on the card when there are no phases. */
+  diagram: DiagramData | null;
 };
 
 function stepCards(categoryIds?: number[]): StepCard[] {
@@ -92,16 +99,19 @@ function stepCards(categoryIds?: number[]): StepCard[] {
     variantCounts.set(v.stepId, (variantCounts.get(v.stepId) ?? 0) + 1);
   }
   const phaseRows = db.select().from(phases).where(inArray(phases.stepId, ids)).orderBy(asc(phases.sortOrder)).all();
+  const diagramRows = db.select().from(diagrams).where(inArray(diagrams.stepId, ids)).orderBy(asc(diagrams.sortOrder)).all();
   return rows.map((s) => ({
     slug: s.slug,
     name: s.name,
     pronunciation: s.pronunciation,
     summary: s.summary,
+    kind: s.kind,
     level: s.level,
     jumpSize: s.jumpSize,
     categoryId: s.categoryId,
     variantCount: variantCounts.get(s.id) ?? 0,
-    phases: phaseRows.filter((p) => p.stepId === s.id).map((p) => p.caption),
+    phases: phaseRows.filter((p) => p.stepId === s.id).map((p) => ({ caption: p.caption, pose: p.pose })),
+    diagram: diagramRows.find((d) => d.stepId === s.id)?.data ?? null,
   }));
 }
 
@@ -269,6 +279,7 @@ function extrasFor(where: { stepIds: number[]; variantIds: number[] }) {
     .select()
     .from(diagrams)
     .where(or(inArray(diagrams.stepId, where.stepIds), inArray(diagrams.variantId, where.variantIds)))
+    .orderBy(asc(diagrams.sortOrder))
     .all();
   const termRows = db
     .select({ stepId: itemTerms.stepId, variantId: itemTerms.variantId, slug: terms.slug, name: terms.name })
@@ -277,7 +288,7 @@ function extrasFor(where: { stepIds: number[]; variantIds: number[] }) {
     .where(or(inArray(itemTerms.stepId, where.stepIds), inArray(itemTerms.variantId, where.variantIds)))
     .all();
   return {
-    phases: (r: ItemRef) => byItem(phaseRows)(r).map((p) => ({ caption: p.caption, count: p.count, imageUrl: p.imageUrl })),
+    phases: (r: ItemRef): Phase[] => byItem(phaseRows)(r).map((p) => ({ caption: p.caption, pose: p.pose })),
     diagrams: (r: ItemRef) => byItem(diagramRows)(r).map((d) => ({ data: d.data, caption: d.caption })),
     terms: (r: ItemRef) => byItem(termRows)(r).map((t) => ({ slug: t.slug, name: t.name })),
   };

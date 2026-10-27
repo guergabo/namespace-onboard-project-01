@@ -1,32 +1,34 @@
 @import "tailwindcss";
 
 @theme {
-  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-serif: var(--font-newsreader), Georgia, serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
 
-  --color-cream: #f4ecd8;
-  --color-cream-dim: #d9d0b7;
-  --color-blush: #d9b8a5;
-  --color-sage-200: #c8cca6;
-  --color-sage-400: #9a9f6c;
-  --color-sage-600: #6d7243;
-  --color-sage-700: #555a33;
-  --color-sage-800: #3f4427;
-  --color-sage-900: #2c301b;
-  --color-glow: #fff6df;
+  --color-cream: #f3ead3;
+  --color-cream-dim: #d8ceb2;
+  --color-blush: #d4b49a;
+  --color-sage-200: #c9c6a0;
+  --color-sage-400: #9a9466;
+  --color-sage-600: #6e6a40;
+  --color-sage-700: #5a5733;
+  --color-sage-800: #444229;
+  --color-sage-900: #2f2d1b;
+  --color-glow: #fbf1d6;
 }
 
 :root {
   color-scheme: dark;
 }
 
+/* Warm olive and sepia, like a faded painting; long text is set in the serif. */
 body {
   color: var(--color-cream);
-  font-family: var(--font-sans);
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
   background:
-    radial-gradient(60rem 40rem at 15% 10%, #7f8450 0%, transparent 60%),
-    radial-gradient(50rem 40rem at 85% 30%, #8a7f55 0%, transparent 55%),
-    radial-gradient(60rem 50rem at 50% 100%, #4a5030 0%, transparent 60%),
+    radial-gradient(60rem 40rem at 15% 10%, #848052 0%, transparent 60%),
+    radial-gradient(50rem 40rem at 85% 30%, #93855c 0%, transparent 55%),
+    radial-gradient(60rem 50rem at 50% 100%, #4b482c 0%, transparent 60%),
     var(--color-sage-700);
   background-attachment: fixed;
 }
@@ -37,18 +39,24 @@ body {
   position: fixed;
   inset: 0;
   z-index: 50;
-  opacity: 0.22;
+  opacity: 0.3;
   mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='4' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23m)'/></svg>");
 }
 
-.font-serif {
-  font-variation-settings: "SOFT" 100, "WONK" 0;
+/* Small uppercase labels, the one place the sans-serif is used. */
+@utility eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
 }
 
 @utility glass {
-  background-color: rgb(244 236 216 / 0.07);
-  border: 1px solid rgb(244 236 216 / 0.16);
+  background-color: rgb(243 234 211 / 0.08);
+  border: 1px solid rgb(243 234 211 / 0.2);
   backdrop-filter: blur(18px) saturate(1.1);
   border-radius: 1.25rem;
 }
@@ -58,24 +66,12 @@ body {
   align-items: center;
   gap: 0.375rem;
   border-radius: 9999px;
-  border: 1px solid rgb(244 236 216 / 0.35);
+  border: 1px solid rgb(243 234 211 / 0.35);
   padding: 0.25rem 0.85rem;
   font-size: 0.8125rem;
 }
 
-/* Hero background: slow drifting colour fields. */
-@keyframes drift-a {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(8%, 6%) scale(1.15); }
-}
-@keyframes drift-b {
-  0%, 100% { transform: translate(0, 0) scale(1.1); }
-  50% { transform: translate(-10%, -4%) scale(0.95); }
-}
-@keyframes drift-c {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-6%, 8%) scale(1.2); }
-}
+/* Home page motion. */
 @keyframes draw-line {
   0% { stroke-dashoffset: var(--len); opacity: 0; }
   10% { opacity: 1; }
@@ -89,20 +85,27 @@ body {
   55% { offset-distance: 100%; opacity: 1; }
   85%, 100% { offset-distance: 100%; opacity: 0; }
 }
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(255 246 223 / 0.6), 0 0 12px 4px rgb(255 246 223 / 0.5); }
-  50% { box-shadow: 0 0 0 6px rgb(255 246 223 / 0), 0 0 18px 6px rgb(255 246 223 / 0.35); }
-}
 
-.blob { position: absolute; border-radius: 9999px; filter: blur(70px); will-change: transform; }
-.blob-a { animation: drift-a 22s ease-in-out infinite; }
-.blob-b { animation: drift-b 28s ease-in-out infinite; }
-.blob-c { animation: drift-c 34s ease-in-out infinite; }
+@keyframes hero-drift {
+  0%, 100% { transform: scale(1.04) translate(0, 0); }
+  50% { transform: scale(1.1) translate(-1.5%, -1%); }
+}
+@keyframes mist {
+  0%, 100% { transform: translateX(-6%); opacity: 0.55; }
+  50% { transform: translateX(6%); opacity: 0.85; }
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.15; transform: scale(0.8); }
+  50% { opacity: 0.4; transform: scale(1.25); }
+}
+.glow-pulse { animation: glow-pulse 2.8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.hero-drift { animation: hero-drift 30s ease-in-out infinite; }
+.mist { animation: mist 18s ease-in-out infinite; }
+
 .line-draw { animation: draw-line 9s ease-in-out infinite; stroke-dasharray: var(--len); }
 .dot-travel { animation: travel-dot 9s ease-in-out infinite; }
-.glow-dot { animation: pulse-glow 2.8s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .blob-a, .blob-b, .blob-c, .line-draw, .dot-travel, .glow-dot { animation: none; }
+  .line-draw, .dot-travel, .glow-pulse, .hero-drift, .mist { animation: none; }
   .line-draw { stroke-dashoffset: 0; }
 }

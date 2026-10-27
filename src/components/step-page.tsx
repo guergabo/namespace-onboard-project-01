@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { HowTo } from "@/db/schema";
 import { getStep } from "@/lib/glossary";
-import { Diagram, diagramTitle } from "./diagrams";
-import { Breadcrumb, LevelPill, PhaseStrip } from "./glossary-ui";
+import { diagramTitle } from "./diagrams";
+import { Breadcrumb, LevelPill } from "./glossary-ui";
 import { SpeakButton } from "./speak-button";
+import { StepBody } from "./step-body";
 
 const HOW_TO_ROWS: [keyof HowTo, string][] = [
   ["start", "Start position"],
@@ -31,12 +32,12 @@ export async function StepPage({ slug, variantSlug }: { slug: string; variantSlu
   if (variantSlug && !variant) notFound();
 
   const howTo: HowTo = { ...step.howTo, ...variant?.howTo };
-  const rows = HOW_TO_ROWS.filter(([key]) => howTo[key]);
-  const phases = (variant?.phases.length ? variant.phases : step.phases).map((p) => p.caption);
+  const rows = HOW_TO_ROWS.flatMap(([key, label]): [string, string][] => (howTo[key] ? [[label, howTo[key]]] : []));
+  const phases = variant?.phases.length ? variant.phases : step.phases;
   // The overview shows the step's own diagrams, or else one of each distinct variant diagram.
-  const diagrams = variant
+  const diagrams = variant?.diagrams.length
     ? variant.diagrams.map((d) => ({ ...d, title: diagramTitle(d.data) }))
-    : step.diagrams.length
+    : variant || step.diagrams.length
       ? step.diagrams.map((d) => ({ ...d, title: diagramTitle(d.data) }))
       : variants
           .flatMap((v) => v.diagrams.map((d) => ({ ...d, title: v.name })))
@@ -69,7 +70,7 @@ export async function StepPage({ slug, variantSlug }: { slug: string; variantSlu
             {step.translation && `“${step.translation}”`}
           </p>
         )}
-        <p className="mt-4 max-w-2xl leading-relaxed text-cream/85">{step.summary}</p>
+        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-cream/85">{step.summary}</p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <LevelPill level={variant?.level ?? step.level} />
           {step.jumpSize && <span className="pill border-cream/20">{step.jumpSize} allegro</span>}
@@ -99,44 +100,13 @@ export async function StepPage({ slug, variantSlug }: { slug: string; variantSlu
         </nav>
       )}
 
-      {variant?.summary && <p className="text-cream/80">{variant.summary}</p>}
+      {variant?.summary && <p className="max-w-2xl text-lg text-cream/85">{variant.summary}</p>}
 
-      {phases.length > 0 && (
-        <section className="glass p-6">
-          <h2 className="mb-5 text-xs uppercase tracking-[0.2em] text-cream/60">Key positions</h2>
-          <PhaseStrip phases={phases} size="lg" />
-        </section>
-      )}
-
-      {diagrams.length > 0 && (
-        <section className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(190px,1fr))]">
-          {diagrams.map((d, i) => (
-            <figure key={i} className="glass p-4">
-              <figcaption className="mb-2 text-xs uppercase tracking-[0.18em] text-cream/60">{d.title}</figcaption>
-              <Diagram data={d.data} />
-              {d.caption && <p className="mt-2 text-xs text-cream/65">{d.caption}</p>}
-            </figure>
-          ))}
-        </section>
-      )}
-
-      {rows.length > 0 && (
-        <section className="glass p-6">
-          <h2 className="font-serif text-3xl">How to do it</h2>
-          <dl className="mt-4 divide-y divide-cream/12">
-            {rows.map(([key, label]) => (
-              <div key={key} className="grid gap-1 py-3 sm:grid-cols-[160px_1fr] sm:gap-6">
-                <dt className="text-sm font-medium text-cream/90">{label}</dt>
-                <dd className="text-sm leading-relaxed text-cream/75">{howTo[key]}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      )}
+      <StepBody kind={step.kind} phases={phases} diagrams={diagrams} howTo={rows} />
 
       {termList.length > 0 && (
         <section className="flex flex-wrap items-center gap-2">
-          <span className="mr-1 text-xs uppercase tracking-[0.2em] text-cream/60">Terms</span>
+          <span className="mr-1 eyebrow text-cream/60">Terms</span>
           {termList.map((t) => (
             <Link key={t.slug} href={`/glossary/terms/${t.slug}`} className="pill italic transition hover:bg-cream/10">
               {t.name}
@@ -150,14 +120,14 @@ export async function StepPage({ slug, variantSlug }: { slug: string; variantSlu
         {related.length === 0 && <p className="text-sm text-cream/60">No relationships yet.</p>}
         {related.map((group) => (
           <div key={group.title}>
-            <h3 className="text-xs uppercase tracking-[0.18em] text-cream/60">{group.title}</h3>
+            <h3 className="eyebrow text-cream/60">{group.title}</h3>
             <ul className="mt-2 space-y-1.5">
               {group.items.map((item, i) => (
                 <li key={i}>
-                  <Link href={item.href} className="text-sm text-cream/90 underline-offset-4 transition hover:text-glow hover:underline">
+                  <Link href={item.href} className="text-cream/90 underline-offset-4 transition hover:text-glow hover:underline">
                     {item.label}
                   </Link>
-                  {item.note && <span className="text-xs text-cream/55"> — {item.note}</span>}
+                  {item.note && <span className="text-sm text-cream/60"> — {item.note}</span>}
                 </li>
               ))}
             </ul>
