@@ -13,7 +13,7 @@ concurrency:
 jobs:
   build-and-test:
     name: Build and test
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-runner
     timeout-minutes: 15
     env:
       NEXT_TELEMETRY_DISABLED: 1
