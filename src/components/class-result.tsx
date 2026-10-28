@@ -45,8 +45,8 @@ export function ClassResult({ sections, choices }: { sections: ClassSection[]; c
   const arrow = "flex h-8 w-8 items-center justify-center rounded-full text-xl text-cream/70 transition hover:bg-cream/10 hover:text-cream";
   return (
     <section id="your-class" className="scroll-mt-6 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="font-serif text-4xl leading-tight">{title}</h2>
+      <div className="rise-in flex flex-wrap items-center justify-between gap-4" style={{ animationDelay: "0.1s" }}>
+        <h2 className="font-serif text-4xl leading-tight">Your class</h2>
         <div className="flex flex-wrap items-center gap-2">
           {swapped && (
             <Link href={href({ ...choices, alts: {} })} scroll={false} className="pill transition hover:bg-cream/10">
@@ -60,18 +60,27 @@ export function ClassResult({ sections, choices }: { sections: ClassSection[]; c
         </div>
       </div>
 
-      <Timeline sections={sections.map(({ key, seconds }) => ({ key, seconds }))} />
+      <div className="draw-x" style={{ animationDelay: "0.25s" }}>
+        <Timeline sections={sections.map(({ key, seconds }) => ({ key, seconds }))} />
+      </div>
 
-      {sections.map((section) => (
-        <div key={section.key} className="glass p-5">
+      {sections.map((section, s) => (
+        <div key={section.key} className="glass rise-in p-5" style={{ animationDelay: `${0.45 + s * 0.15}s` }}>
           <div className="flex items-baseline justify-between gap-4 border-b border-cream/15 pb-3">
             <h3 className="font-serif text-2xl">{section.title}</h3>
             <span className="text-cream/75">{minutes(section.seconds)}</span>
           </div>
           <ol className="divide-y divide-cream/10">
-            {section.items.map((item) => (
-              <li key={item.origin} className="grid grid-cols-[56px_auto_1fr_auto_auto] items-center gap-2 py-2.5 sm:gap-3">
-                <div className="w-14">{item.step.pose && <Figure pose={item.step.pose} side="R" size="sm" />}</div>
+            {section.items.map((item, r) => (
+              <li
+                key={item.origin}
+                className="rise-in grid grid-cols-[56px_auto_1fr_auto_auto] items-center gap-2 py-2.5 sm:gap-3"
+                style={{ animationDelay: `${0.55 + s * 0.15 + r * 0.06}s` }}
+              >
+                {/* Keyed by step, so a swapped-in step fades in. */}
+                <div key={`${item.step.slug}:figure`} className="phase-in w-14">
+                  {item.step.pose && <Figure pose={item.step.pose} side="R" size="sm" />}
+                </div>
                 {item.options > 1 ? (
                   <Link href={swap(item, -1)} scroll={false} aria-label={`Previous alternative to ${item.step.name}`} className={arrow}>
                     ‹
@@ -79,7 +88,7 @@ export function ClassResult({ sections, choices }: { sections: ClassSection[]; c
                 ) : (
                   <span className="w-8" />
                 )}
-                <div className="min-w-0">
+                <div key={`${item.step.slug}:text`} className="phase-in min-w-0">
                   <Link href={`/glossary/${item.step.slug}`} className="font-serif text-lg leading-tight hover:text-glow">
                     {item.step.name}
                   </Link>

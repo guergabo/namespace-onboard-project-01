@@ -11,7 +11,10 @@ test("build a class from the form, then swap one step", async ({ page }) => {
   await page.getByRole("button", { name: /Build my class/ }).click();
 
   const result = page.locator("#your-class");
-  await expect(result.getByRole("heading", { level: 2 })).toHaveText(/Beginner · Turns · 15 min/i);
+  // The form folds into a summary of the choices, with the class below it.
+  await expect(page.getByRole("button", { name: "Edit choices" })).toBeVisible();
+  await expect(page.getByText(/Beginner · Turns · 15 min/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Build my class/ })).toHaveCount(0);
   await expect(result.getByRole("heading", { name: "Turns", exact: true })).toBeVisible();
 
   const names = () => result.locator("li a[href^='/glossary/']").allTextContents();

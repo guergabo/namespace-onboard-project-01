@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ClassForm } from "@/components/class-form";
 import { ClassResult } from "@/components/class-result";
-import { buildClass, parseChoices } from "@/lib/class-builder";
+import { buildClass, choicesQuery, parseChoices } from "@/lib/class-builder";
 import { getClassCatalog } from "@/lib/glossary";
 
 export const metadata: Metadata = { title: "Build my class" };
@@ -14,7 +14,8 @@ async function ClassBuilder({ searchParams }: { searchParams: PageProps<"/class"
   return (
     <>
       <ClassForm key={choices ? JSON.stringify(choices) : "new"} catalog={catalog.map((s) => ({ ...s, pose: null, phases: [] }))} initial={choices} />
-      {choices && <ClassResult sections={buildClass(catalog, choices)} choices={choices} />}
+      {/* A new class (not a swap) mounts afresh, so it plays its entrance again. */}
+      {choices && <ClassResult key={choicesQuery({ ...choices, alts: {} })} sections={buildClass(catalog, choices)} choices={choices} />}
     </>
   );
 }

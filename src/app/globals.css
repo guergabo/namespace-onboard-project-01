@@ -97,6 +97,18 @@ body {
 .hero-drift { animation: hero-drift 30s ease-in-out infinite; }
 .mist { animation: mist 18s ease-in-out infinite; }
 
+/* Build my class: a new class rises in section by section, and its timeline draws from the left. */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.rise-in { animation: rise-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes draw-x {
+  from { clip-path: inset(0 100% 0 0 round 9999px); }
+  to { clip-path: inset(0 0 0 0 round 9999px); }
+}
+.draw-x { animation: draw-x 1s cubic-bezier(0.3, 0.6, 0.2, 1) both; }
+
 /* Class mode: each phase of a step, and the "Change sides" cue, fade in. */
 @keyframes phase-in {
   from { opacity: 0; }
@@ -107,7 +119,7 @@ body {
 .tendu-frame { opacity: 0; animation: tendu-frame 7.2s linear infinite backwards; }
 
 @media (prefers-reduced-motion: reduce) {
-  .glow-pulse, .hero-drift, .mist, .tendu-frame, .phase-in { animation: none; }
+  .glow-pulse, .hero-drift, .mist, .tendu-frame, .phase-in, .rise-in, .draw-x { animation: none; }
   /* Without motion, hold the tendu devant frame. */
   .tendu-frame:nth-child(2) { opacity: 1; }
 }

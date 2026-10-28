@@ -56,9 +56,13 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-/** The class choices, with a live preview of how the minutes split across the sections. */
+/**
+ * The class choices, with a live preview of how the minutes split across the sections. Once a
+ * class is built, the form folds into a one-line summary above it, and opens again to edit.
+ */
 export function ClassForm({ catalog, initial }: { catalog: CatalogStep[]; initial: Choices | null }) {
   const router = useRouter();
+  const [editing, setEditing] = useState(initial === null);
   const [choices, setChoices] = useState<Choices>(
     initial ?? { level: "beginner", goals: ["full-class"], minutes: 30, barre: true, travel: false, jumps: true, seed: 1, alts: {} },
   );
@@ -76,14 +80,29 @@ export function ClassForm({ catalog, initial }: { catalog: CatalogStep[]; initia
   const split = splitSeconds(choices, { barre: pool.barre.length > 0, adagio: pool.adagio.length > 0, turns: pool.turns.length > 0, allegro: pool.allegro.length > 0 });
   const parts = (Object.keys(split) as SectionKey[]).filter((k) => split[k] > 0);
 
+  if (initial && !editing) {
+    const space = [initial.barre ? "Barre" : "No barre", initial.travel && "Room to travel", !initial.jumps && "No jumps"].filter(Boolean);
+    return (
+      <div className="glass rise-in flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+        <p className="text-cream/85">
+          <span className="capitalize">{initial.level}</span> · {initial.goals.map((g) => GOAL_LABELS[g]).join(" + ")} · {initial.minutes} min
+          <span className="text-cream/60"> · {space.join(" · ")}</span>
+        </p>
+        <button type="button" onClick={() => setEditing(true)} className="pill transition hover:bg-cream/10">
+          Edit choices
+        </button>
+      </div>
+    );
+  }
+
   return (
     <form
-      className="glass p-6"
+      className="glass rise-in p-6"
       onSubmit={(e) => {
         e.preventDefault();
         // A fresh seed each time, so building again gives a different mix.
         const seed = Math.floor(Math.random() * 1_000_000) + 1;
-        router.push(`/class?${choicesQuery({ ...choices, seed, alts: {} })}#your-class`);
+        router.push(`/class?${choicesQuery({ ...choices, seed, alts: {} })}`);
       }}
     >
       <Row label="Level">
@@ -135,7 +154,19 @@ export function ClassForm({ catalog, initial }: { catalog: CatalogStep[]; initia
         </ul>
       </div>
 
-      <div className="mt-6 flex justify-center">
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+        {initial && (
+          <button
+            type="button"
+            onClick={() => {
+              setChoices(initial);
+              setEditing(false);
+            }}
+            className="pill transition hover:bg-cream/10"
+          >
+            Cancel
+          </button>
+        )}
         <button type="submit" className="rounded-full bg-cream px-8 py-3.5 font-serif text-xl text-sage-900 shadow-[0_10px_40px_rgb(47_45_27/0.35)] transition hover:bg-glow">
           Build my class →
         </button>
