@@ -50,12 +50,20 @@ export default async function Home() {
               ))}
             </div>
           </div>
-          <Link
-            href="/glossary"
-            className="rounded-full bg-cream px-8 py-4 font-serif text-xl text-sage-900 shadow-[0_10px_40px_rgb(47_45_27/0.35)] transition hover:bg-glow"
-          >
-            Explore the glossary →
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/class"
+              className="rounded-full border border-cream/60 px-8 py-4 font-serif text-xl text-cream transition hover:bg-cream/10"
+            >
+              Build my class
+            </Link>
+            <Link
+              href="/glossary"
+              className="rounded-full bg-cream px-8 py-4 font-serif text-xl text-sage-900 shadow-[0_10px_40px_rgb(47_45_27/0.35)] transition hover:bg-glow"
+            >
+              Explore the glossary →
+            </Link>
+          </div>
         </div>
       </section>
     </main>

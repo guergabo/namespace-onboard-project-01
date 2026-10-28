@@ -10,6 +10,9 @@ export function SiteNav() {
         <Link href="/glossary" className="transition hover:text-cream">
           Glossary
         </Link>
+        <Link href="/class" className="transition hover:text-cream">
+          Build my class
+        </Link>
       </nav>
     </header>
   );

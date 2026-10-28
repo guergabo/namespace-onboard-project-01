@@ -13,6 +13,7 @@ import {
   type DiagramData,
   type RelationshipType,
 } from "@/db/schema";
+import type { CatalogStep } from "./class-builder";
 import type { Pose } from "./pose";
 
 /**
@@ -159,6 +160,23 @@ export async function getGlossaryStats() {
     terms: await count(terms),
     sections: tree.map((c) => ({ slug: c.slug, name: c.name })),
   };
+}
+
+/** Every step with what the class builder needs to choose and show it. */
+export async function getClassCatalog(): Promise<CatalogStep[]> {
+  "use cache";
+  glossaryCache();
+  const categorySlugs = new Map(db.select({ id: categories.id, slug: categories.slug }).from(categories).all().map((c) => [c.id, c.slug]));
+  const goals = new Map(db.select({ slug: steps.slug, goals: steps.goals }).from(steps).all().map((s) => [s.slug, s.goals]));
+  return stepCards().map((s) => ({
+    slug: s.slug,
+    name: s.name,
+    level: s.level as CatalogStep["level"],
+    goals: goals.get(s.slug)!,
+    category: categorySlugs.get(s.categoryId)!,
+    jumpSize: s.jumpSize as CatalogStep["jumpSize"],
+    pose: s.phases.find((p) => p.pose)?.pose ?? (s.diagram?.kind === "figure" ? s.diagram.pose : null),
+  }));
 }
 
 export async function getCategorySlugs() {
