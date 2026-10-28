@@ -21,9 +21,11 @@ test("build a class from the form, then swap one step", async ({ page }) => {
   await swap.click();
 
   await expect.poll(names).not.toContain(swapped);
+  // Only that row changes; every other row keeps its step and its place.
   const after = await names();
+  const row = before.indexOf(swapped);
   expect(after).toHaveLength(before.length);
-  expect(after.filter((name) => !before.includes(name))).toHaveLength(1);
+  expect([...after.slice(0, row), ...after.slice(row + 1)]).toEqual([...before.slice(0, row), ...before.slice(row + 1)]);
 });
 
 test("class mode counts down, changes sides halfway through, and skips", async ({ page }) => {

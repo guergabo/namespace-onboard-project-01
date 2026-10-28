@@ -90,20 +90,36 @@ test("the same choices give the same class, and a swap changes only its own row"
   // A short class, so each section picks from more steps than it has room for.
   const base = choices({ minutes: 15, seed: 11 });
   for (let seed = 1; seed <= 20; seed++) assert.deepEqual(slugs({ ...base, seed }), slugs({ ...base, seed }), `seed ${seed}`);
-  const before = buildClass(catalog, base);
-  const rows = before.flatMap((s) => s.items.filter((i) => i.options > 1).map((i) => ({ section: s.key, item: i })));
-  assert.ok(rows.length >= 3);
-  for (const { section: key, item } of rows) {
-    const after = buildClass(catalog, { ...base, alts: { [item.origin]: 1 } });
-    for (const s of before) {
-      const was = s.items.map((i) => i.step.slug);
-      const now = after.find((a) => a.key === s.key)!.items.map((i) => i.step.slug);
-      if (s.key !== key) assert.deepEqual(now, was, `${item.origin}: ${s.key}`);
-      else {
-        assert.equal(now.length, was.length);
-        assert.deepEqual(was.filter((x) => !now.includes(x)), [item.step.slug], item.origin);
+  let tried = 0;
+  for (const c of [base, choices({ minutes: 30, seed: 4 }), choices({ minutes: 60, goals: ["turns"], seed: 2 })]) {
+    const rows = (alts: Choices["alts"]) =>
+      buildClass(catalog, { ...c, alts }).flatMap((s) => s.items.map((i) => ({ origin: i.origin, step: i.step.slug, options: i.options })));
+    const before = rows({});
+    for (const [i, row] of before.entries()) {
+      for (let n = 1; n < row.options; n++, tried++) {
+        const after = rows({ [row.origin]: n });
+        assert.equal(after.length, before.length);
+        assert.notEqual(after[i].step, row.step, `${row.origin} at ${n}`);
+        // Every other row keeps its step, its place and its alternatives.
+        assert.deepEqual([...after.slice(0, i), ...after.slice(i + 1)], [...before.slice(0, i), ...before.slice(i + 1)], `${row.origin} at ${n}`);
       }
     }
+  }
+  assert.ok(tried >= 5, `only ${tried} swaps tried`);
+});
+
+test("whatever is swapped, the barre keeps Vaganova's order, jumps go small to big, and no step repeats", () => {
+  const base = choices({ minutes: 60, seed: 7 });
+  const origins = buildClass(catalog, base).flatMap((s) => s.items.map((i) => i.origin));
+  const barreOrder = ["demi-plie", "grand-plie", "battement-tendu", "battement-tendu-jete", "rond-de-jambe-par-terre", "battement-fondu", "battement-frappe", "rond-de-jambe-en-lair", "petit-battement", "battement-developpe", "grand-battement-jete"];
+  for (let n = 0; n < 12; n++) {
+    const sections = buildClass(catalog, { ...base, alts: Object.fromEntries(origins.map((o, i) => [o, n + i])) });
+    const all = sections.flatMap((s) => s.items.map((i) => i.step.slug));
+    assert.equal(new Set(all).size, all.length, `repeat at ${n}: ${all}`);
+    const barre = sections.find((s) => s.key === "barre")!.items.map((i) => barreOrder.indexOf(i.step.slug));
+    assert.deepEqual(barre, [...barre].sort((x, y) => x - y), `barre at ${n}`);
+    const sizes = sections.find((s) => s.key === "allegro")!.items.map((i) => ({ petit: 0, medium: 1, grand: 2 })[i.step.jumpSize!]);
+    assert.deepEqual(sizes, [...sizes].sort(), `allegro at ${n}`);
   }
 });
 

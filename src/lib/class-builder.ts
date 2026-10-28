@@ -291,19 +291,28 @@ export function buildClass(catalog: CatalogStep[], choices: Choices): ClassSecti
     .map((key) => {
       const count = Math.max(1, Math.min(pool[key].length, Math.round(split[key] / ITEM_SECONDS[key])));
       const picked = pick(key, pool[key], count, choices);
-      // Each row can cycle through the section's unpicked steps, best first. A step one row has
-      // swapped in is no longer offered to the rows after it, so a class never repeats a step.
-      const spare = pool[key].filter((s) => !picked.includes(s)).sort(preference(choices));
-      const taken = new Set<string>();
-      const rows = picked.map((origin) => {
-        const options = [origin, ...spare.filter((s) => !taken.has(s.slug))];
+      // Each row has its own alternatives: the unpicked steps that fall between it and its
+      // neighbours in the lesson, best first. A step between two rows goes to the nearer one, or to
+      // the other if the nearer one is fixed (the barre's warm-up keeps its steps). So swapping
+      // never moves or changes another row, and the lesson order holds whatever is swapped.
+      const lesson = inLessonOrder(key, pool[key], pool[key]);
+      const at = picked.map((s) => lesson.indexOf(s));
+      const fixed = picked.map((s) => key === "barre" && WARM_UP.includes(s.slug));
+      const alternatives = picked.map((): CatalogStep[] => []);
+      for (const step of pool[key].filter((s) => !picked.includes(s)).sort(preference(choices))) {
+        const r = lesson.indexOf(step);
+        const after = at.findIndex((x) => x > r); // the row just after it, if any
+        const below = after === -1 ? at.length - 1 : after - 1;
+        const candidates = [below, after].filter((i) => i >= 0 && !fixed[i]);
+        if (!candidates.length) continue;
+        const row = candidates.reduce((best, i) => (Math.abs(r - at[i]) < Math.abs(r - at[best]) ? i : best));
+        alternatives[row].push(step);
+      }
+      const rows = picked.map((origin, i) => {
+        const options = [origin, ...alternatives[i]];
         const choice = (((choices.alts[origin.slug] ?? 0) % options.length) + options.length) % options.length;
-        taken.add(options[choice].slug);
         return { origin: origin.slug, step: options[choice], choice, options: options.length };
       });
-      // A swapped-in step takes its own place in the lesson.
-      const order = inLessonOrder(key, pool[key], rows.map((r) => r.step));
-      rows.sort((a, b) => order.indexOf(a.step) - order.indexOf(b.step));
       // Share the section's seconds in 30-second slices; the first item takes what is left over.
       const each = Math.floor(split[key] / rows.length / 30) * 30;
       const items = rows.map((row) => {
