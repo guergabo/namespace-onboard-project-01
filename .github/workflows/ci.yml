@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build-and-test:
     name: Build and test
-    runs-on: namespace-profile-linux-runner
+    runs-on: namespace-profile-linux-basic
     timeout-minutes: 15
     env:
       NEXT_TELEMETRY_DISABLED: 1
