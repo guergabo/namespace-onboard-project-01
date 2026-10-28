@@ -35,18 +35,22 @@ jobs:
       - name: Typecheck
         run: npx next typegen && npm run typecheck
 
+      - name: Unit tests
+        run: npm test
+
       - run: npm run build
 
-      # Start the production build and check that key pages render with their content.
-      - name: Smoke test
-        run: |
-          npm start -- -p 3000 > server.log 2>&1 &
-          for i in $(seq 1 30); do curl -fs -o /dev/null http://localhost:3000/ && break; sleep 1; done
-          check() {
-            page=$(curl -fsS "http://localhost:3000$1") && grep -qF "$2" <<< "$page" || { echo "FAIL: $1 is missing \"$2\""; cat server.log; exit 1; }
-            echo "ok: $1"
-          }
-          check / "tendu"
-          check /glossary "Basic conceptions"
-          check /glossary/croise-derriere "Croisé derrière"
-          check /glossary/battement-tendu "Working leg"
+      # Starts the production build and drives it in Chromium (see playwright.config.ts).
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7

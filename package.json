@@ -10,7 +10,9 @@
     "db:push": "mkdir -p data && drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
     "db:setup": "npm run db:push && npm run db:seed",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test 'src/**/*.test.ts'",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
@@ -20,6 +22,7 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^20",

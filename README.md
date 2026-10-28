@@ -23,6 +23,17 @@ npm run dev
 After changing `src/db/seed-data.ts`, run `npm run db:seed` and restart the dev server (glossary
 queries are cached for an hour).
 
+## Tests
+
+```bash
+npm test                                     # unit tests (Node's test runner)
+npx playwright install chromium              # once, for the browser tests
+npm run build && npm run test:e2e            # browser tests against the production build
+```
+
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, both test suites and the build on every push to
+`main` and on pull requests.
+
 ## Structure
 
 - `src/db/schema.ts` — tables
