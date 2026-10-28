@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import type { DiagramData } from "@/db/schema";
 import type { Phase } from "@/lib/glossary";
-import type { Pose, Side } from "@/lib/pose";
+import { dependsOnSide, type Side } from "@/lib/pose";
 import { Diagram, FigureNotes, SideText } from "./diagrams";
 import { PhaseStrip } from "./glossary-ui";
 
@@ -47,20 +47,6 @@ function setSide(side: Side) {
   listeners.forEach((l) => l());
 }
 
-const SIDE_TOKEN = /\{([WSws]|p[1-8])\}/;
-const symmetric = (p: Pose) =>
-  p.legs.W === p.legs.S && p.arms.W === p.arms.S && (p.facing === 1 || p.facing === 5) && !p.twist && (p.head ?? "front") === "front";
-
-/** Whether choosing the left leg changes anything on the page; symmetric steps like 1st position don't. */
-function dependsOnSide(phases: Phase[], diagrams: BodyDiagram[], howTo: [string, string][]) {
-  const texts = [...phases.map((p) => p.caption), ...howTo.map(([, t]) => t), ...diagrams.flatMap((d) => [d.caption ?? "", ...(d.data.kind === "figure" ? (d.data.notes ?? []).map((n) => n.text) : [])])];
-  return (
-    texts.some((t) => SIDE_TOKEN.test(t)) ||
-    phases.some((p) => p.pose && !symmetric(p.pose)) ||
-    diagrams.some(({ data }) => data.kind === "room" || data.kind === "turn" || (data.kind === "feet" ? data.position >= 3 : !symmetric(data.pose)))
-  );
-}
-
 export type BodyDiagram = { data: DiagramData; title: string; caption: string | null };
 
 /**
@@ -89,7 +75,12 @@ export function StepBody({
 
   return (
     <div className="space-y-6">
-      {sided && dependsOnSide(phases, diagrams, howTo) && (
+      {sided &&
+        dependsOnSide(
+          [...phases.map((p) => p.caption), ...howTo.map(([, t]) => t), ...diagrams.map((d) => d.caption ?? "")],
+          phases.flatMap((p) => (p.pose ? [p.pose] : [])),
+          diagrams.map((d) => d.data),
+        ) && (
         <div className="flex flex-wrap items-center gap-3">
           <span className="eyebrow text-cream/65">Working leg</span>
           <div role="radiogroup" aria-label="Working leg" className="flex rounded-full border border-cream/30 p-0.5">

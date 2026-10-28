@@ -14,7 +14,7 @@ import {
   type RelationshipType,
 } from "@/db/schema";
 import type { CatalogStep } from "./class-builder";
-import type { Pose } from "./pose";
+import { dependsOnSide, type Pose } from "./pose";
 
 /**
  * Read-only glossary queries. The glossary only changes when the seed is reloaded,
@@ -167,16 +167,30 @@ export async function getClassCatalog(): Promise<CatalogStep[]> {
   "use cache";
   glossaryCache();
   const categorySlugs = new Map(db.select({ id: categories.id, slug: categories.slug }).from(categories).all().map((c) => [c.id, c.slug]));
-  const goals = new Map(db.select({ slug: steps.slug, goals: steps.goals }).from(steps).all().map((s) => [s.slug, s.goals]));
-  return stepCards().map((s) => ({
-    slug: s.slug,
-    name: s.name,
-    level: s.level as CatalogStep["level"],
-    goals: goals.get(s.slug)!,
-    category: categorySlugs.get(s.categoryId)!,
-    jumpSize: s.jumpSize as CatalogStep["jumpSize"],
-    pose: s.phases.find((p) => p.pose)?.pose ?? (s.diagram?.kind === "figure" ? s.diagram.pose : null),
-  }));
+  const rows = new Map(db.select({ id: steps.id, slug: steps.slug, goals: steps.goals, howTo: steps.howTo }).from(steps).all().map((s) => [s.slug, s]));
+  const allDiagrams = db.select({ stepId: diagrams.stepId, caption: diagrams.caption, data: diagrams.data }).from(diagrams).all();
+  return stepCards().map((s) => {
+    const row = rows.get(s.slug)!;
+    const own = allDiagrams.filter((d) => d.stepId === row.id);
+    // The same rule as the step page's left/right toggle.
+    const sided =
+      categorySlugs.get(s.categoryId) !== "arms" &&
+      dependsOnSide(
+        [...s.phases.map((p) => p.caption), ...Object.values(row.howTo).filter((t): t is string => typeof t === "string"), ...own.map((d) => d.caption ?? "")],
+        s.phases.flatMap((p) => (p.pose ? [p.pose] : [])),
+        own.map((d) => d.data),
+      );
+    return {
+      slug: s.slug,
+      name: s.name,
+      level: s.level as CatalogStep["level"],
+      goals: row.goals,
+      category: categorySlugs.get(s.categoryId)!,
+      jumpSize: s.jumpSize as CatalogStep["jumpSize"],
+      pose: s.phases.find((p) => p.pose)?.pose ?? (s.diagram?.kind === "figure" ? s.diagram.pose : null),
+      sided,
+    };
+  });
 }
 
 export async function getCategorySlugs() {

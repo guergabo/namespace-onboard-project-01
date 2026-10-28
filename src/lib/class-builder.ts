@@ -19,6 +19,8 @@ export type CatalogStep = {
   jumpSize: "petit" | "medium" | "grand" | null;
   /** A line figure to show next to the step, if the glossary has one. */
   pose: Pose | null;
+  /** Whether the step has a working leg, so it is done on each side. Demi-plié, for one, isn't. */
+  sided: boolean;
 };
 
 export const MINUTES = [15, 30, 45, 60] as const;
@@ -156,21 +158,22 @@ function pick(key: SectionKey, steps: CatalogStep[], count: number, choices: Cho
   return key === "allegro" ? ordered.sort((a, b) => JUMP_ORDER[a.jumpSize ?? "petit"] - JUMP_ORDER[b.jumpSize ?? "petit"]) : ordered;
 }
 
+/** Counts per section and level; sided steps outside allegro are then done on each side. */
 const PRESCRIPTIONS: Record<SectionKey, Record<Level, string>> = {
   barre: {
-    beginner: "2 × 8 counts, slowly · each side",
-    intermediate: "2 × 8 counts · each side",
-    advanced: "4 × 8 counts, brisk · each side",
+    beginner: "2 × 8 counts, slowly",
+    intermediate: "2 × 8 counts",
+    advanced: "4 × 8 counts, brisk",
   },
   adagio: {
-    beginner: "Hold 8 counts · each side",
-    intermediate: "Develop and hold 4 counts · each side",
-    advanced: "Develop, hold, promenade · each side",
+    beginner: "Hold 8 counts",
+    intermediate: "Develop and hold 4 counts",
+    advanced: "Develop, hold, promenade",
   },
   turns: {
-    beginner: "4 times · each side",
-    intermediate: "4 singles · each side",
-    advanced: "4 doubles · each side",
+    beginner: "4 times",
+    intermediate: "4 singles",
+    advanced: "4 doubles",
   },
   allegro: {
     beginner: "8 times, slowly",
@@ -234,7 +237,11 @@ export function buildClass(catalog: CatalogStep[], choices: Choices): ClassSecti
       const steps = pick(key, pool[key].filter((s) => !skipped.includes(s.slug)), count, choices);
       // Share the section's seconds in 30-second slices; the first item takes what is left over.
       const each = Math.floor(split[key] / steps.length / 30) * 30;
-      const items = steps.map((step) => ({ step, prescription: PRESCRIPTIONS[key][choices.level], seconds: each }));
+      const items = steps.map((step) => ({
+        step,
+        prescription: PRESCRIPTIONS[key][choices.level] + (step.sided && key !== "allegro" ? " · each side" : ""),
+        seconds: each,
+      }));
       items[0].seconds += split[key] - each * steps.length;
       return {
         key,

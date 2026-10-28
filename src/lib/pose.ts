@@ -9,6 +9,8 @@
  * The figure is projected as the AUDIENCE sees it, from a little above, so the floor is an ellipse.
  */
 
+import type { DiagramData } from "@/db/schema";
+
 export type Side = "R" | "L";
 export type Limb = "W" | "S";
 
@@ -317,3 +319,20 @@ export function sideText(text: string, side: Side): string {
 }
 const round = (n: number) => Math.round(n * 100) / 100;
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+
+const SIDE_TOKEN = /\{([WSws]|p[1-8])\}/;
+const symmetric = (p: Pose) =>
+  p.legs.W === p.legs.S && p.arms.W === p.arms.S && (p.facing === 1 || p.facing === 5) && !p.twist && (p.head ?? "front") === "front";
+
+/**
+ * Whether a step changes with the working leg, from its texts (captions, how-to), phase poses and
+ * diagrams. Symmetric steps like 1st position or demi-plié don't, so they have no left/right.
+ */
+export function dependsOnSide(texts: string[], poses: Pose[], diagrams: DiagramData[]) {
+  const notes = diagrams.flatMap((d) => (d.kind === "figure" ? (d.notes ?? []).map((n) => n.text) : []));
+  return (
+    [...texts, ...notes].some((t) => SIDE_TOKEN.test(t)) ||
+    poses.some((p) => !symmetric(p)) ||
+    diagrams.some((d) => d.kind === "room" || d.kind === "turn" || (d.kind === "feet" ? d.position >= 3 : !symmetric(d.pose)))
+  );
+}

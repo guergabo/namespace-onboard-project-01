@@ -11,6 +11,7 @@ const step = (slug: string, category: string, level: Level, goals: Goal[], jumpS
   category,
   jumpSize,
   pose: null,
+  sided: !["demi-plie", "changement-de-pieds", "temps-leve"].includes(slug),
 });
 
 // Listed out of lesson order on purpose, so ordering comes from the builder.
@@ -121,6 +122,13 @@ test("a section with no alternatives offers no swap", () => {
   const turns = section(choices({ level: "beginner" }), "turns")!;
   assert.equal(turns.swappable, false);
   assert.equal(section(choices({ minutes: 15 }), "adagio")!.swappable, true);
+});
+
+test("only steps with a working leg are done on each side", () => {
+  const barre = section(choices({ seed: 3 }), "barre")!.items;
+  const counts = Object.fromEntries(barre.map((i) => [i.step.slug, i.prescription]));
+  assert.equal(counts["demi-plie"], "2 × 8 counts");
+  assert.equal(counts["battement-tendu"], "2 × 8 counts · each side");
 });
 
 test("a goal gives its section more time", () => {
