@@ -133,12 +133,26 @@ test("a row with no alternatives has nothing to swap", () => {
 test("only steps with a working leg are done on each side, and turns in both directions", () => {
   const barre = section(choices({ seed: 3 }), "barre")!.items;
   const counts = Object.fromEntries(barre.map((i) => [i.step.slug, i.prescription]));
-  assert.equal(counts["demi-plie"], "2 × 8 counts");
-  assert.equal(counts["battement-tendu"], "2 × 8 counts · each side");
+  assert.ok(!counts["demi-plie"].includes("side"), counts["demi-plie"]);
+  assert.ok(counts["battement-tendu"].endsWith(" · each side"), counts["battement-tendu"]);
   // Turns go both ways, even those without a working leg.
   const chaines = section(choices({ minutes: 60, goals: ["turns"] }), "turns")!.items.find((i) => i.step.slug === "chaines")!;
-  assert.equal(chaines.prescription, "4 singles · right, then left");
+  assert.ok(chaines.prescription.endsWith(" · right, then left"), chaines.prescription);
   assert.equal(chaines.sided, true);
+});
+
+test("counts suit the step and the level", () => {
+  const counts = (level: Level, slug: string) =>
+    buildClass(catalog, choices({ level, minutes: 60, goals: ["turns", "feet"] }))
+      .flatMap((s) => s.items)
+      .find((i) => i.step.slug === slug)?.prescription;
+  // Barre exercises speed up with level; beginners learn pliés without 4th position.
+  assert.match(counts("beginner", "battement-tendu")!, /every 4 counts/);
+  assert.match(counts("advanced", "battement-tendu")!, /every count/);
+  assert.doesNotMatch(counts("beginner", "demi-plie")!, /4th/);
+  // Chaînés are never doubles, whatever the level.
+  assert.doesNotMatch(counts("advanced", "chaines")!, /double/);
+  assert.match(counts("advanced", "pirouette")!, /Double/);
 });
 
 test("a goal gives its section more time", () => {

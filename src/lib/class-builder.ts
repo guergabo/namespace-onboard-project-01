@@ -186,29 +186,54 @@ function pick(key: SectionKey, steps: CatalogStep[], count: number, choices: Cho
   return inLessonOrder(key, steps, [...steps].sort(preferred).slice(0, count));
 }
 
-/** Counts per section and level; sided steps outside allegro are then done on each side. */
-const PRESCRIPTIONS: Record<SectionKey, Record<Level, string>> = {
-  barre: {
-    beginner: "2 × 8 counts, slowly",
-    intermediate: "2 × 8 counts",
-    advanced: "4 × 8 counts, brisk",
-  },
-  adagio: {
-    beginner: "Hold 8 counts",
-    intermediate: "Develop and hold 4 counts",
-    advanced: "Develop, hold, promenade",
-  },
-  turns: {
-    beginner: "4 times",
-    intermediate: "4 singles",
-    advanced: "4 doubles",
-  },
-  allegro: {
-    beginner: "8 times, slowly",
-    intermediate: "16 times",
-    advanced: "2 × 16, quick",
-  },
+type ByLevel = Record<Level, string>;
+const levels = (beginner: string, intermediate: string, advanced: string): ByLevel => ({ beginner, intermediate, advanced });
+
+/** How fast barre exercises go: slowly while they are learned, quicker as they become secure. */
+const BARRE_TEMPO = levels("one every 4 counts", "one every 2 counts", "one every count");
+const POSITIONS = levels("in 1st, 2nd and 5th", "in 1st, 2nd, 4th and 5th", "in 1st, 2nd, 4th and 5th");
+
+/**
+ * What to do for each step, by level. Counts follow common Vaganova practice but vary between
+ * teachers; they are suggestions, and the timer decides how many times through.
+ */
+const STEP_COUNTS: Record<string, ByLevel> = {
+  "demi-plie": levels(`2 ${POSITIONS.beginner} · 4 counts down, 4 up`, `2 ${POSITIONS.intermediate} · 4 counts down, 4 up`, `2 ${POSITIONS.advanced}, with port de bras`),
+  "grand-plie": levels(`1 ${POSITIONS.beginner} · 8 counts`, `1 ${POSITIONS.intermediate} · 8 counts`, `1 ${POSITIONS.advanced}, with port de bras`),
+  "battement-tendu": en("En croix"),
+  "battement-tendu-jete": en("En croix"),
+  "rond-de-jambe-par-terre": en("En dehors, then en dedans"),
+  // Fondu and développé stay slow and smooth at every level.
+  "battement-fondu": levels("En croix · one every 4 counts", "En croix · one every 2 counts", "En croix · one every 2 counts"),
+  "battement-frappe": en("En croix"),
+  "rond-de-jambe-en-lair": en("En dehors, then en dedans"),
+  "petit-battement": levels("Even beats, one every 2 counts", "Even beats, one every count", "Two beats every count, with accents"),
+  "battement-developpe": levels("En croix · one every 8 counts", "En croix · one every 4 counts", "En croix · one every 4 counts, holding at the height"),
+  "grand-battement-jete": en("En croix"),
+  "soutenu-en-tournant": levels("Half turns, then full turns", "4 full turns in a row", "8 full turns in a row, quick"),
+  pirouette: levels("Single turns from 5th", "Single turns from 5th and 4th", "Double turns, en dehors and en dedans"),
+  chaines: levels("8 turns in a line", "8 turns in a line", "16 turns, finishing in a pose"),
+  "fouette-en-tournant": levels("8 in a row", "8 in a row", "16 in a row"),
 };
+function en(pattern: string): ByLevel {
+  return levels(`${pattern} · ${BARRE_TEMPO.beginner}`, `${pattern} · ${BARRE_TEMPO.intermediate}`, `${pattern} · ${BARRE_TEMPO.advanced}`);
+}
+
+/** For steps without their own counts. */
+const SECTION_COUNTS: Record<SectionKey, ByLevel> = {
+  barre: BARRE_TEMPO,
+  adagio: levels("Hold 8 counts", "Développé into the pose, hold 4 counts", "Développé, hold, then promenade"),
+  turns: levels("4 times", "4 singles", "4 doubles"),
+  allegro: levels("8 times, with a pause after each", "16 times without stopping", "2 × 16, quick"),
+};
+/** Big jumps take more out of the dancer, so fewer of them. */
+const GRAND_ALLEGRO = levels("4 times", "8 times", "8 times, at full height");
+
+function counts(key: SectionKey, step: CatalogStep, level: Level) {
+  if (STEP_COUNTS[step.slug]) return STEP_COUNTS[step.slug][level];
+  if (key === "allegro" && step.jumpSize === "grand") return GRAND_ALLEGRO[level];
+  return SECTION_COUNTS[key][level];
+}
 
 const TITLES: Record<SectionKey, string> = {
   barre: "Barre",
@@ -284,7 +309,7 @@ export function buildClass(catalog: CatalogStep[], choices: Choices): ClassSecti
       const items = rows.map((row) => {
         const sided = key === "turns" || (row.step.sided && key !== "allegro");
         const sides = key === "turns" ? " · right, then left" : sided ? " · each side" : "";
-        return { ...row, prescription: PRESCRIPTIONS[key][choices.level] + sides, seconds: each, sided };
+        return { ...row, prescription: counts(key, row.step, choices.level) + sides, seconds: each, sided };
       });
       items[0].seconds += split[key] - each * rows.length;
       return {
