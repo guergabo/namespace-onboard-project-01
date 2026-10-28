@@ -1,0 +1,9 @@
+.git
+.amp
+.next
+node_modules
+data
+test-results
+playwright-report
+*.tsbuildinfo
+next-env.d.ts

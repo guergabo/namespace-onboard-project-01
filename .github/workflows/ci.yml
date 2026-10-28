@@ -50,6 +50,18 @@ jobs:
       - name: Browser tests
         run: npm run test:e2e
 
+      # Namespace runners build on Remote Builders and are already logged in to the workspace's
+      # private registry (nscr.io), whose address is in NSC_CONTAINER_REGISTRY. Pull requests only
+      # build the image; main pushes it.
+      - name: Build and push the Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.NSC_CONTAINER_REGISTRY }}/tendu:${{ github.sha }}
+            ${{ env.NSC_CONTAINER_REGISTRY }}/tendu:latest
+
       - name: Upload Playwright traces
         if: failure()
         uses: actions/upload-artifact@v7

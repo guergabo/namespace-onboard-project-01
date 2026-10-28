@@ -32,7 +32,17 @@ npm run build && npm run test:e2e            # browser tests against the product
 ```
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, both test suites and the build on every push to
-`main` and on pull requests.
+`main` and on pull requests, on a Namespace runner.
+
+## Docker
+
+```bash
+docker build -t tendu . && docker run -p 3000:3000 tendu
+```
+
+The image bundles the seeded glossary database, so data written at runtime is lost when the container
+is replaced. CI pushes the image for every commit on `main` to the workspace's private registry,
+`nscr.io/<workspace-id>/tendu`, tagged with the commit SHA and `latest`.
 
 ## Structure
 
