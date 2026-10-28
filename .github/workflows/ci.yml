@@ -22,19 +22,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # GitHub's npm cache is off: npm's downloads and Playwright's browsers are kept on the runner
-      # profile's Namespace cache volume instead, so nothing is downloaded or uploaded per run.
+      # GitHub's npm cache is off: npm's downloads are kept on the runner profile's Namespace cache
+      # volume instead, so nothing is downloaded or uploaded per run.
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           package-manager-cache: false
 
-      - name: Cache npm packages and Playwright browsers
+      # Not `playwright`: the cache volume would be mounted over ~/.cache/ms-playwright and hide
+      # the browsers baked into the base image.
+      - name: Cache npm packages
         uses: namespacelabs/nscloud-cache-action@v1
         with:
-          cache: |
-            npm
-            playwright
+          cache: npm
 
       - run: npm ci
 
@@ -52,10 +52,15 @@ jobs:
 
       - run: npm run build
 
-      # Starts the production build and drives it in Chromium (see playwright.config.ts).
+      # Chromium's headless shell and its system libraries are baked into the runner profile's
+      # custom base image (Dockerfile in the Namespace dashboard) for Playwright 1.64.1, so this is
+      # a no-op; after a Playwright bump it downloads the new shell until the image is updated.
+      # No --with-deps: that runs apt-get on every run. --only-shell: the tests run headless, so
+      # the full Chromium isn't needed.
       - name: Install Chromium for Playwright
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --only-shell chromium
 
+      # Starts the production build and drives it in Chromium (see playwright.config.ts).
       - name: Browser tests
         run: npm run test:e2e
 
