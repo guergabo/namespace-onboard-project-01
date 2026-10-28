@@ -97,10 +97,17 @@ body {
 .hero-drift { animation: hero-drift 30s ease-in-out infinite; }
 .mist { animation: mist 18s ease-in-out infinite; }
 
+/* Class mode: each phase of a step, and the "Change sides" cue, fade in. */
+@keyframes phase-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.phase-in { animation: phase-in 0.45s ease-out; }
+
 .tendu-frame { opacity: 0; animation: tendu-frame 7.2s linear infinite backwards; }
 
 @media (prefers-reduced-motion: reduce) {
-  .glow-pulse, .hero-drift, .mist, .tendu-frame { animation: none; }
+  .glow-pulse, .hero-drift, .mist, .tendu-frame, .phase-in { animation: none; }
   /* Without motion, hold the tendu devant frame. */
   .tendu-frame:nth-child(2) { opacity: 1; }
 }

@@ -6,6 +6,8 @@ import type { Goal, Level } from "@/db/schema";
 import {
   GOAL_LABELS,
   MINUTES,
+  SECTION_COLORS,
+  SECTION_NAMES,
   candidates,
   choicesQuery,
   splitSeconds,
@@ -15,13 +17,6 @@ import {
 } from "@/lib/class-builder";
 
 const LEVELS: Level[] = ["beginner", "intermediate", "advanced"];
-const SECTION_COLORS: Record<SectionKey, string> = {
-  barre: "bg-cream/75",
-  adagio: "bg-blush/80",
-  turns: "bg-sage-200/80",
-  allegro: "bg-gold/85",
-};
-const SECTION_NAMES: Record<SectionKey, string> = { barre: "Barre", adagio: "Centre", turns: "Turns", allegro: "Allegro" };
 
 function Pill({ on, disabled, onClick, children }: { on: boolean; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -65,7 +60,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 export function ClassForm({ catalog, initial }: { catalog: CatalogStep[]; initial: Choices | null }) {
   const router = useRouter();
   const [choices, setChoices] = useState<Choices>(
-    initial ?? { level: "beginner", goals: ["full-class"], minutes: 30, barre: true, travel: false, jumps: true, seed: 1, skip: [] },
+    initial ?? { level: "beginner", goals: ["full-class"], minutes: 30, barre: true, travel: false, jumps: true, seed: 1, alts: {} },
   );
   const set = (patch: Partial<Choices>) => setChoices((c) => ({ ...c, ...patch }));
 
@@ -77,7 +72,7 @@ export function ClassForm({ catalog, initial }: { catalog: CatalogStep[]; initia
   };
   const goalsFull = choices.goals.filter((g) => g !== "full-class").length >= 3;
 
-  const pool = candidates(catalog, { ...choices, skip: [] });
+  const pool = candidates(catalog, choices);
   const split = splitSeconds(choices, { barre: pool.barre.length > 0, adagio: pool.adagio.length > 0, turns: pool.turns.length > 0, allegro: pool.allegro.length > 0 });
   const parts = (Object.keys(split) as SectionKey[]).filter((k) => split[k] > 0);
 
@@ -88,7 +83,7 @@ export function ClassForm({ catalog, initial }: { catalog: CatalogStep[]; initia
         e.preventDefault();
         // A fresh seed each time, so building again gives a different mix.
         const seed = Math.floor(Math.random() * 1_000_000) + 1;
-        router.push(`/class?${choicesQuery({ ...choices, seed, skip: [] })}#your-class`);
+        router.push(`/class?${choicesQuery({ ...choices, seed, alts: {} })}#your-class`);
       }}
     >
       <Row label="Level">

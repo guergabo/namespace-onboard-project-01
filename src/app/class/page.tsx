@@ -13,7 +13,7 @@ async function ClassBuilder({ searchParams }: { searchParams: PageProps<"/class"
   const catalog = await getClassCatalog();
   return (
     <>
-      <ClassForm key={choices ? JSON.stringify(choices) : "new"} catalog={catalog.map((s) => ({ ...s, pose: null }))} initial={choices} />
+      <ClassForm key={choices ? JSON.stringify(choices) : "new"} catalog={catalog.map((s) => ({ ...s, pose: null, phases: [] }))} initial={choices} />
       {choices && <ClassResult sections={buildClass(catalog, choices)} choices={choices} />}
     </>
   );

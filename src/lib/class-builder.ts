@@ -19,6 +19,8 @@ export type CatalogStep = {
   jumpSize: "petit" | "medium" | "grand" | null;
   /** A line figure to show next to the step, if the glossary has one. */
   pose: Pose | null;
+  /** The step's phases in order, for showing the movement; empty when the glossary has none. */
+  phases: Pose[];
   /** Whether the step has a working leg, so it is done on each side. Demi-plié, for one, isn't. */
   sided: boolean;
 };
@@ -37,22 +39,39 @@ export type Choices = {
   jumps: boolean;
   /** Varies which steps are picked; the barre order never changes. */
   seed: number;
-  /** Steps the dancer swapped out. */
-  skip: string[];
+  /**
+   * Swaps, by the slug of the step a row started with: how far along that row's alternatives the
+   * dancer has moved. Any whole number works; it wraps round, so ‹ and › cycle.
+   */
+  alts: Record<string, number>;
 };
 
 export type SectionKey = "barre" | "adagio" | "turns" | "allegro";
 
-export type ClassItem = { step: CatalogStep; prescription: string; seconds: number };
-export type ClassSection = {
-  key: SectionKey;
-  title: string;
+export type ClassItem = {
+  step: CatalogStep;
+  /** The step this row started with, which keys its swaps. */
+  origin: string;
+  /** Which of the row's alternatives is showing, and how many there are (the first is the origin). */
+  choice: number;
+  options: number;
+  prescription: string;
   seconds: number;
-  items: ClassItem[];
-  /** Whether the section has other steps to swap in. */
-  swappable: boolean;
-  /** The swaps still in effect in this section. */
-  skipped: string[];
+  /** Done on the right, then the left: steps with a working leg, and every turn (its direction). */
+  sided: boolean;
+};
+export type ClassSection = { key: SectionKey; title: string; seconds: number; items: ClassItem[] };
+
+export const SECTION_NAMES: Record<SectionKey, string> = { barre: "Barre", adagio: "Centre", turns: "Turns", allegro: "Allegro" };
+/** Seconds as m:ss. */
+export const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
+
+/** Tailwind classes for each section's colour in the timelines. */
+export const SECTION_COLORS: Record<SectionKey, string> = {
+  barre: "bg-cream/75",
+  adagio: "bg-blush/80",
+  turns: "bg-sage-200/80",
+  allegro: "bg-gold/85",
 };
 
 /** Vaganova's order of exercises at the barre (chapters I–III). */
@@ -110,7 +129,7 @@ export const GOAL_LABELS: Record<Goal, string> = {
 /** The steps each section can use for these choices, in the order they would be danced. */
 export function candidates(catalog: CatalogStep[], choices: Choices): Record<SectionKey, CatalogStep[]> {
   const usable = catalog.filter(
-    (s) => rank(s.level) <= rank(choices.level) && !choices.skip.includes(s.slug) && (choices.travel || !TRAVELLING.includes(s.slug)),
+    (s) => rank(s.level) <= rank(choices.level) && (choices.travel || !TRAVELLING.includes(s.slug)),
   );
   const inCategories = (cats: string[]) => usable.filter((s) => cats.includes(s.category));
   return {
@@ -143,19 +162,28 @@ function score(seed: number, slug: string) {
   return (h >>> 0) / 4294967296;
 }
 
-function pick(key: SectionKey, steps: CatalogStep[], count: number, choices: Choices): CatalogStep[] {
+/** Steps serving more of the goals first, then a shuffle that depends on the seed. */
+function preference(choices: Choices) {
   const goalScore = (s: CatalogStep) => s.goals.filter((g) => choices.goals.includes(g)).length;
-  const preferred = (a: CatalogStep, b: CatalogStep) => goalScore(b) - goalScore(a) || score(choices.seed, a.slug) - score(choices.seed, b.slug);
+  return (a: CatalogStep, b: CatalogStep) => goalScore(b) - goalScore(a) || score(choices.seed, a.slug) - score(choices.seed, b.slug);
+}
+
+/** Puts a section's steps in the order they are danced. */
+function inLessonOrder(key: SectionKey, pool: CatalogStep[], chosen: CatalogStep[]) {
+  // Glossary order (Vaganova's order at the barre), and allegro from small jumps to big ones.
+  const ordered = pool.filter((s) => chosen.includes(s));
+  return key === "allegro" ? ordered.sort((a, b) => JUMP_ORDER[a.jumpSize ?? "petit"] - JUMP_ORDER[b.jumpSize ?? "petit"]) : ordered;
+}
+
+function pick(key: SectionKey, steps: CatalogStep[], count: number, choices: Choices): CatalogStep[] {
+  const preferred = preference(choices);
   if (key === "barre") {
     // Keep the warm-up, then the exercises that serve the goals, in barre order.
     const keep = new Set(steps.filter((s) => WARM_UP.includes(s.slug)).map((s) => s.slug));
     for (const s of steps.filter((s) => !keep.has(s.slug)).sort(preferred)) if (keep.size < count) keep.add(s.slug);
     return steps.filter((s) => keep.has(s.slug));
   }
-  const chosen = [...steps].sort(preferred).slice(0, count);
-  // Glossary order, and allegro from small jumps to big ones.
-  const ordered = steps.filter((s) => chosen.includes(s));
-  return key === "allegro" ? ordered.sort((a, b) => JUMP_ORDER[a.jumpSize ?? "petit"] - JUMP_ORDER[b.jumpSize ?? "petit"]) : ordered;
+  return inLessonOrder(key, steps, [...steps].sort(preferred).slice(0, count));
 }
 
 /** Counts per section and level; sided steps outside allegro are then done on each side. */
@@ -204,7 +232,13 @@ export function parseChoices(query: Record<string, string | string[] | undefined
     travel: get("travel") === "1",
     jumps: get("jumps") !== "0",
     seed: Number(get("seed")) || 1,
-    skip: (get("skip") ?? "").split(",").filter(Boolean),
+    alts: Object.fromEntries(
+      (get("alt") ?? "")
+        .split(",")
+        .map((pair) => pair.split("."))
+        .filter(([slug, n]) => slug && Number.isInteger(Number(n)) && Number(n) !== 0)
+        .map(([slug, n]) => [slug, Number(n)]),
+    ),
   };
 }
 
@@ -218,38 +252,46 @@ export function choicesQuery(c: Choices): string {
     jumps: c.jumps ? "1" : "0",
     seed: String(c.seed),
   });
-  if (c.skip.length) q.set("skip", c.skip.join(","));
+  const alts = Object.entries(c.alts).filter(([, n]) => n !== 0);
+  if (alts.length) q.set("alt", alts.map(([slug, n]) => `${slug}.${n}`).join(","));
   return q.toString();
 }
 
 export function buildClass(catalog: CatalogStep[], choices: Choices): ClassSection[] {
-  // Sections and their sizes come from the steps before any swaps, so swapping never shrinks a class.
-  const pool = candidates(catalog, { ...choices, skip: [] });
+  const pool = candidates(catalog, choices);
   const available = { barre: pool.barre.length > 0, adagio: pool.adagio.length > 0, turns: pool.turns.length > 0, allegro: pool.allegro.length > 0 };
   const split = splitSeconds(choices, available);
   return (Object.keys(split) as SectionKey[])
     .filter((key) => split[key] > 0)
     .map((key) => {
       const count = Math.max(1, Math.min(pool[key].length, Math.round(split[key] / ITEM_SECONDS[key])));
-      // Once every alternative has been swapped in, the oldest swapped-out step comes back.
-      const skipped = choices.skip.filter((slug) => pool[key].some((s) => s.slug === slug));
-      while (pool[key].length - skipped.length < count) skipped.shift();
-      const steps = pick(key, pool[key].filter((s) => !skipped.includes(s.slug)), count, choices);
+      const picked = pick(key, pool[key], count, choices);
+      // Each row can cycle through the section's unpicked steps, best first. A step one row has
+      // swapped in is no longer offered to the rows after it, so a class never repeats a step.
+      const spare = pool[key].filter((s) => !picked.includes(s)).sort(preference(choices));
+      const taken = new Set<string>();
+      const rows = picked.map((origin) => {
+        const options = [origin, ...spare.filter((s) => !taken.has(s.slug))];
+        const choice = (((choices.alts[origin.slug] ?? 0) % options.length) + options.length) % options.length;
+        taken.add(options[choice].slug);
+        return { origin: origin.slug, step: options[choice], choice, options: options.length };
+      });
+      // A swapped-in step takes its own place in the lesson.
+      const order = inLessonOrder(key, pool[key], rows.map((r) => r.step));
+      rows.sort((a, b) => order.indexOf(a.step) - order.indexOf(b.step));
       // Share the section's seconds in 30-second slices; the first item takes what is left over.
-      const each = Math.floor(split[key] / steps.length / 30) * 30;
-      const items = steps.map((step) => ({
-        step,
-        prescription: PRESCRIPTIONS[key][choices.level] + (step.sided && key !== "allegro" ? " · each side" : ""),
-        seconds: each,
-      }));
-      items[0].seconds += split[key] - each * steps.length;
+      const each = Math.floor(split[key] / rows.length / 30) * 30;
+      const items = rows.map((row) => {
+        const sided = key === "turns" || (row.step.sided && key !== "allegro");
+        const sides = key === "turns" ? " · right, then left" : sided ? " · each side" : "";
+        return { ...row, prescription: PRESCRIPTIONS[key][choices.level] + sides, seconds: each, sided };
+      });
+      items[0].seconds += split[key] - each * rows.length;
       return {
         key,
         title: key === "barre" && !choices.barre ? "Barre exercises in the centre" : TITLES[key],
         seconds: split[key],
         items,
-        swappable: pool[key].length > count,
-        skipped,
       };
     });
 }

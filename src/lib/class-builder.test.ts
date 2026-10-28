@@ -11,7 +11,8 @@ const step = (slug: string, category: string, level: Level, goals: Goal[], jumpS
   category,
   jumpSize,
   pose: null,
-  sided: !["demi-plie", "changement-de-pieds", "temps-leve"].includes(slug),
+  phases: [],
+  sided: !["demi-plie", "changement-de-pieds", "temps-leve", "chaines"].includes(slug),
 });
 
 // Listed out of lesson order on purpose, so ordering comes from the builder.
@@ -43,7 +44,7 @@ const choices = (overrides: Partial<Choices> = {}): Choices => ({
   travel: true,
   jumps: true,
   seed: 1,
-  skip: [],
+  alts: {},
   ...overrides,
 });
 
@@ -85,50 +86,59 @@ test("space switches: no jumps drops allegro, no room drops travelling steps, no
   assert.equal(section(choices({ barre: false }), "barre")?.title, "Barre exercises in the centre");
 });
 
-test("the same choices give the same class, and a swap changes only that step's section", () => {
+test("the same choices give the same class, and a swap changes only its own row", () => {
   // A short class, so each section picks from more steps than it has room for.
   const base = choices({ minutes: 15, seed: 11 });
   for (let seed = 1; seed <= 20; seed++) assert.deepEqual(slugs({ ...base, seed }), slugs({ ...base, seed }), `seed ${seed}`);
   const before = buildClass(catalog, base);
-  const swapped = before.find((s) => s.key === "adagio")!.items[0].step.slug;
-  const after = buildClass(catalog, { ...base, skip: [swapped] });
-  for (const s of before) {
-    const other = after.find((a) => a.key === s.key)!.items.map((i) => i.step.slug);
-    if (s.key === "adagio") assert.ok(!other.includes(swapped));
-    else assert.deepEqual(other, s.items.map((i) => i.step.slug), s.key);
+  const rows = before.flatMap((s) => s.items.filter((i) => i.options > 1).map((i) => ({ section: s.key, item: i })));
+  assert.ok(rows.length >= 3);
+  for (const { section: key, item } of rows) {
+    const after = buildClass(catalog, { ...base, alts: { [item.origin]: 1 } });
+    for (const s of before) {
+      const was = s.items.map((i) => i.step.slug);
+      const now = after.find((a) => a.key === s.key)!.items.map((i) => i.step.slug);
+      if (s.key !== key) assert.deepEqual(now, was, `${item.origin}: ${s.key}`);
+      else {
+        assert.equal(now.length, was.length);
+        assert.deepEqual(was.filter((x) => !now.includes(x)), [item.step.slug], item.origin);
+      }
+    }
   }
 });
 
-test("swapping the same row again and again cycles through the alternatives without shrinking the class", () => {
-  // Swaps the first centre step as the page does: the URL keeps only the swaps still in effect.
-  let c = choices({ minutes: 15 });
-  const original = buildClass(catalog, c);
-  const sizes = original.map((s) => s.items.length);
-  const seen = new Set<string>();
-  for (let click = 0; click < 10; click++) {
-    const sections = buildClass(catalog, c);
-    assert.deepEqual(sections.map((s) => s.items.length), sizes, `click ${click}`);
-    const first = sections.find((s) => s.key === "adagio")!.items[0].step.slug;
-    seen.add(first);
-    c = { ...c, skip: [...sections.flatMap((s) => s.skipped), first] };
+test("‹ and › wrap round a row's alternatives, and two swapped rows never show the same step", () => {
+  const base = choices({ minutes: 15 });
+  const row = (alts: Choices["alts"]) => section({ ...base, alts }, "adagio")!.items[0];
+  const { origin, options } = row({});
+  // The intermediate centre has three steps for its one row.
+  assert.equal(options, 3);
+  const cycle = [0, 1, 2].map((n) => row({ [origin]: n }).step.slug);
+  assert.deepEqual([...cycle].sort(), ["attitude-croisee", "croise-devant", "first-arabesque"]);
+  assert.equal(row({ [origin]: 3 }).step.slug, cycle[0]);
+  assert.equal(row({ [origin]: -1 }).step.slug, cycle[2]);
+
+  const allegro = section(base, "allegro")!.items;
+  assert.ok(allegro.length >= 2);
+  for (let n = 1; n <= 4; n++) {
+    const both = section({ ...base, alts: Object.fromEntries(allegro.map((i) => [i.origin, n])) }, "allegro")!.items.map((i) => i.step.slug);
+    assert.equal(new Set(both).size, allegro.length, `both rows at ${n}: ${both}`);
   }
-  // The intermediate centre has three steps for its one row, so every one comes round, and the
-  // URL never holds more swaps than the section has steps.
-  assert.deepEqual([...seen].sort(), ["attitude-croisee", "croise-devant", "first-arabesque"]);
-  assert.ok(c.skip.length <= 3, `URL keeps ${c.skip.length} swaps`);
 });
 
-test("a section with no alternatives offers no swap", () => {
-  const turns = section(choices({ level: "beginner" }), "turns")!;
-  assert.equal(turns.swappable, false);
-  assert.equal(section(choices({ minutes: 15 }), "adagio")!.swappable, true);
+test("a row with no alternatives has nothing to swap", () => {
+  assert.deepEqual(section(choices({ level: "beginner" }), "turns")!.items.map((i) => i.options), [1]);
 });
 
-test("only steps with a working leg are done on each side", () => {
+test("only steps with a working leg are done on each side, and turns in both directions", () => {
   const barre = section(choices({ seed: 3 }), "barre")!.items;
   const counts = Object.fromEntries(barre.map((i) => [i.step.slug, i.prescription]));
   assert.equal(counts["demi-plie"], "2 × 8 counts");
   assert.equal(counts["battement-tendu"], "2 × 8 counts · each side");
+  // Turns go both ways, even those without a working leg.
+  const chaines = section(choices({ minutes: 60, goals: ["turns"] }), "turns")!.items.find((i) => i.step.slug === "chaines")!;
+  assert.equal(chaines.prescription, "4 singles · right, then left");
+  assert.equal(chaines.sided, true);
 });
 
 test("a goal gives its section more time", () => {
@@ -137,7 +147,7 @@ test("a goal gives its section more time", () => {
 });
 
 test("choices survive a round trip through the URL", () => {
-  const c = choices({ goals: ["turns", "feet"], travel: false, seed: 42, skip: ["pirouette"] });
+  const c = choices({ goals: ["turns", "feet"], travel: false, seed: 42, alts: { pirouette: 2, "croise-devant": -1 } });
   assert.deepEqual(parseChoices(Object.fromEntries(new URLSearchParams(choicesQuery(c)))), c);
   assert.equal(parseChoices({ level: "beginner", min: "20" }), null);
 });

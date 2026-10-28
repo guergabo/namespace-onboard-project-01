@@ -188,6 +188,7 @@ export async function getClassCatalog(): Promise<CatalogStep[]> {
       category: categorySlugs.get(s.categoryId)!,
       jumpSize: s.jumpSize as CatalogStep["jumpSize"],
       pose: s.phases.find((p) => p.pose)?.pose ?? (s.diagram?.kind === "figure" ? s.diagram.pose : null),
+      phases: s.phases.flatMap((p) => (p.pose ? [p.pose] : [])),
       sided,
     };
   });
