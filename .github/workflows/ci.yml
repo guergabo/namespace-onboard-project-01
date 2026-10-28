@@ -22,10 +22,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # GitHub's npm cache is off: npm's downloads and Playwright's browsers are kept on the runner
+      # profile's Namespace cache volume instead, so nothing is downloaded or uploaded per run.
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
+          package-manager-cache: false
+
+      - name: Cache npm packages and Playwright browsers
+        uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          cache: |
+            npm
+            playwright
 
       - run: npm ci
 
