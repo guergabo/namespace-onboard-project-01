@@ -10,6 +10,8 @@ const minutes = (seconds: number) => {
 /** A built class, section by section. Regenerate and swap are links, so every class has its own URL. */
 export function ClassResult({ sections, choices }: { sections: ClassSection[]; choices: Choices }) {
   const href = (c: Choices) => `/class?${choicesQuery(c)}#your-class`;
+  // Only swaps still in effect go into the URL, so cycling through a section keeps it short.
+  const skipped = sections.flatMap((s) => s.skipped);
   const goals = choices.goals.map((g) => GOAL_LABELS[g]).join(" + ");
   return (
     <section id="your-class" className="scroll-mt-6 space-y-4">
@@ -18,7 +20,7 @@ export function ClassResult({ sections, choices }: { sections: ClassSection[]; c
           <span className="capitalize">{choices.level}</span> · {goals} · {choices.minutes} min
         </h2>
         <div className="flex gap-2">
-          {choices.skip.length > 0 && (
+          {skipped.length > 0 && (
             <Link href={href({ ...choices, skip: [] })} scroll={false} className="pill transition hover:bg-cream/10">
               Undo swaps
             </Link>
@@ -46,15 +48,19 @@ export function ClassResult({ sections, choices }: { sections: ClassSection[]; c
                   <p className="text-sm text-cream/65">{prescription}</p>
                 </div>
                 <span className="text-sm text-cream/75">{minutes(seconds)}</span>
-                <Link
-                  href={href({ ...choices, skip: [...choices.skip, step.slug] })}
-                  scroll={false}
-                  aria-label={`Swap ${step.name} for another step`}
-                  title="Swap for another step"
-                  className="rounded-full px-2 py-1 text-cream/70 transition hover:bg-cream/10 hover:text-cream"
-                >
-                  ⇄
-                </Link>
+                {section.swappable ? (
+                  <Link
+                    href={href({ ...choices, skip: [...skipped, step.slug] })}
+                    scroll={false}
+                    aria-label={`Swap ${step.name} for another step`}
+                    title="Swap for another step"
+                    className="rounded-full px-2 py-1 text-cream/70 transition hover:bg-cream/10 hover:text-cream"
+                  >
+                    ⇄
+                  </Link>
+                ) : (
+                  <span />
+                )}
               </li>
             ))}
           </ol>

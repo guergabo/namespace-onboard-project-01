@@ -98,6 +98,31 @@ test("the same choices give the same class, and a swap changes only that step's 
   }
 });
 
+test("swapping the same row again and again cycles through the alternatives without shrinking the class", () => {
+  // Swaps the first centre step as the page does: the URL keeps only the swaps still in effect.
+  let c = choices({ minutes: 15 });
+  const original = buildClass(catalog, c);
+  const sizes = original.map((s) => s.items.length);
+  const seen = new Set<string>();
+  for (let click = 0; click < 10; click++) {
+    const sections = buildClass(catalog, c);
+    assert.deepEqual(sections.map((s) => s.items.length), sizes, `click ${click}`);
+    const first = sections.find((s) => s.key === "adagio")!.items[0].step.slug;
+    seen.add(first);
+    c = { ...c, skip: [...sections.flatMap((s) => s.skipped), first] };
+  }
+  // The intermediate centre has three steps for its one row, so every one comes round, and the
+  // URL never holds more swaps than the section has steps.
+  assert.deepEqual([...seen].sort(), ["attitude-croisee", "croise-devant", "first-arabesque"]);
+  assert.ok(c.skip.length <= 3, `URL keeps ${c.skip.length} swaps`);
+});
+
+test("a section with no alternatives offers no swap", () => {
+  const turns = section(choices({ level: "beginner" }), "turns")!;
+  assert.equal(turns.swappable, false);
+  assert.equal(section(choices({ minutes: 15 }), "adagio")!.swappable, true);
+});
+
 test("a goal gives its section more time", () => {
   const turns = (goals: Goal[]) => section(choices({ goals }), "turns")!.seconds;
   assert.ok(turns(["turns"]) > turns(["full-class"]));

@@ -42,7 +42,16 @@ export type Choices = {
 export type SectionKey = "barre" | "adagio" | "turns" | "allegro";
 
 export type ClassItem = { step: CatalogStep; prescription: string; seconds: number };
-export type ClassSection = { key: SectionKey; title: string; seconds: number; items: ClassItem[] };
+export type ClassSection = {
+  key: SectionKey;
+  title: string;
+  seconds: number;
+  items: ClassItem[];
+  /** Whether the section has other steps to swap in. */
+  swappable: boolean;
+  /** The swaps still in effect in this section. */
+  skipped: string[];
+};
 
 /** Vaganova's order of exercises at the barre (chapters I–III). */
 const BARRE_ORDER = [
@@ -211,14 +220,18 @@ export function choicesQuery(c: Choices): string {
 }
 
 export function buildClass(catalog: CatalogStep[], choices: Choices): ClassSection[] {
-  const pool = candidates(catalog, choices);
+  // Sections and their sizes come from the steps before any swaps, so swapping never shrinks a class.
+  const pool = candidates(catalog, { ...choices, skip: [] });
   const available = { barre: pool.barre.length > 0, adagio: pool.adagio.length > 0, turns: pool.turns.length > 0, allegro: pool.allegro.length > 0 };
   const split = splitSeconds(choices, available);
   return (Object.keys(split) as SectionKey[])
     .filter((key) => split[key] > 0)
     .map((key) => {
       const count = Math.max(1, Math.min(pool[key].length, Math.round(split[key] / ITEM_SECONDS[key])));
-      const steps = pick(key, pool[key], count, choices);
+      // Once every alternative has been swapped in, the oldest swapped-out step comes back.
+      const skipped = choices.skip.filter((slug) => pool[key].some((s) => s.slug === slug));
+      while (pool[key].length - skipped.length < count) skipped.shift();
+      const steps = pick(key, pool[key].filter((s) => !skipped.includes(s.slug)), count, choices);
       // Share the section's seconds in 30-second slices; the first item takes what is left over.
       const each = Math.floor(split[key] / steps.length / 30) * 30;
       const items = steps.map((step) => ({ step, prescription: PRESCRIPTIONS[key][choices.level], seconds: each }));
@@ -228,6 +241,8 @@ export function buildClass(catalog: CatalogStep[], choices: Choices): ClassSecti
         title: key === "barre" && !choices.barre ? "Barre exercises in the centre" : TITLES[key],
         seconds: split[key],
         items,
+        swappable: pool[key].length > count,
+        skipped,
       };
     });
 }
