@@ -74,11 +74,6 @@ export async function StepPage({ slug, variantSlug }: { slug: string; variantSlu
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <LevelPill level={variant?.level ?? step.level} />
           {step.jumpSize && <span className="pill border-cream/20">{step.jumpSize} allegro</span>}
-          {(variant ?? step).needsReview && (
-            <span className="pill border-dashed border-cream/40 text-cream/70" title="This entry has not been reviewed yet">
-              Draft · needs review
-            </span>
-          )}
         </div>
       </header>
 
